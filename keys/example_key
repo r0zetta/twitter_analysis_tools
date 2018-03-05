@@ -1,0 +1,9 @@
+email=email.address@emailaddress.com
+owner=twitter_handle
+name=Twitter Name
+owner_id=numeric_twitter_id
+consumer_key=key_data
+consumer_secret=key_data
+access_token=key_data
+access_token_secret=key_data
+
