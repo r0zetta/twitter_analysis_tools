@@ -931,9 +931,9 @@ def process_tweet(status):
             for k in description_keywords:
                 if k.lower() in description:
                     matched = True
+                    susp_score += 100
             if matched == True:
                 record_list("description_matches", screen_name)
-                susp_score += 100
 
 
 # Known users get a zero suspiciousness
