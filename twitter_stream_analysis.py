@@ -329,8 +329,6 @@ def get_account_data_for_names(names):
     batches = (names[i:i+batch_len] for i in range(0, len(names), batch_len))
     ret = []
     for batch_count, batch in enumerate(batches):
-        sys.stdout.write("#")
-        sys.stdout.flush()
         users_list = auth_api.lookup_users(screen_names=batch)
         users_json = (map(lambda t: t._json, users_list))
         ret += users_json
@@ -338,12 +336,16 @@ def get_account_data_for_names(names):
 
 def get_ids_from_names(names):
     ret = []
+    found_names = []
     all_json = get_account_data_for_names(names)
     for d in all_json:
         if "id_str" in d:
             id_str = d["id_str"]
             ret.append(id_str)
-    return ret
+        if "screen_name" in d:
+            found_names.append(d["screen_name"])
+    not_found = list(set([x.lower() for x in names]) - set([x.lower() for x in found_names]))
+    return ret, not_found
 
 
 
@@ -513,9 +515,10 @@ def create_periodic_graphs(name):
 
 def serialize():
     debug_print(sys._getframe().f_code.co_name)
-    tmp_file = "data/raw/serialized.bak"
     filename = "data/raw/serialized.bin"
-    os.rename(filename, tmp_file)
+    if os.path.exists(filename):
+        tmp_file = "data/raw/serialized.bak"
+        os.rename(filename, tmp_file)
     save_bin(data, filename)
 
 # These get dumped when we exit
@@ -1133,18 +1136,15 @@ if __name__ == '__main__':
         else:
             to_follow = read_config("config/follow.txt")
             to_follow = [x.lower() for x in to_follow]
-        id_list_file = "config/id_list.json"
-        id_list = []
-        if os.path.exists(id_list_file):
-            id_list = load_json(id_list_file)
-        if id_list is None or len(id_list) < 1:
-            print("Converting names to IDs")
-            if len(to_follow) < 1:
-                print("No account names provided.")
-                sys.exit(0)
-            id_list = get_ids_from_names(to_follow)
-            save_json(id_list, id_list_file)
-        print(" ID count: " + str(len(id_list)))
+        if len(to_follow) < 1:
+            print("No account names provided.")
+            sys.exit(0)
+        print("Converting names to IDs")
+        print("Names to follow: " + str(len(to_follow)))
+        id_list, not_found = get_ids_from_names(to_follow)
+        print("ID count: " + str(len(id_list)))
+        if len(not_found) > 0:
+            print("Not found: " + ", ".join(not_found))
         if len(id_list) < 1:
             print("No account IDs found.")
             sys.exit(0)
