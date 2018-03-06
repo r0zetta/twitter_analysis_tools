@@ -5,7 +5,10 @@ def dump_bar_chart(dirname, filename, title, x_labels, chart_data):
     if not os.path.exists(dirname):
         os.makedirs(dirname)
     filepath = os.path.join(dirname, filename)
-    chart = pygal.Bar(show_y_guides=True, x_labels_major_count=5, show_minor_x_labels=False, show_minor_y_labels=False, x_label_rotation=20)
+    label_count = len(x_labels)
+    if label_count > 10:
+        label_count = 10
+    chart = pygal.Bar(show_y_guides=True, x_labels_major_count=label_count, show_minor_x_labels=False, show_minor_y_labels=True, x_label_rotation=20)
     chart.title = title
     chart.x_labels = x_labels
     for name, stuff in chart_data.iteritems():
@@ -16,7 +19,10 @@ def dump_line_chart(dirname, filename, title, x_labels, chart_data):
     if not os.path.exists(dirname):
         os.makedirs(dirname)
     filepath = os.path.join(dirname, filename)
-    chart = pygal.Line(show_y_guides=True, show_dots=False, x_labels_major_count=5, show_minor_x_labels=False, show_minor_y_labels=False, x_label_rotation=20)
+    label_count = len(x_labels)
+    if label_count > 10:
+        label_count = 10
+    chart = pygal.Line(show_y_guides=True, show_dots=False, x_labels_major_count=5, show_minor_x_labels=False, show_minor_y_labels=True, x_label_rotation=20)
     chart.title = title
     chart.x_labels = x_labels
     for name, stuff in chart_data.iteritems():

@@ -463,27 +463,31 @@ def create_overall_graphs(name):
 def create_periodic_graphs(name):
     debug_print(sys._getframe().f_code.co_name)
     for x, y in {"hour": "hourly", "day": "daily"}.iteritems():
+        file_label = get_datestring(x)
+# Create pie chart for latest datestring
+        title = name + " " + file_label
+        dataset = dict(data[file_label][name].most_common(15))
+        if len(dataset) > 0:
+            dirname = "data/graphs/" + y + "/" + name + "/pie/"
+            filename = name + "_" + file_label + ".svg"
+            dump_pie_chart(dirname, filename, title, dataset)
+
+# Get all items from last 10 datestrings
         all_items = Counter()
         for s in range(10):
             label = get_datestring(x, s)
             if label in data:
                 if name in data[label]:
-                    title = name + " " + label
-                    dataset = dict(data[label][name].most_common(15))
-                    if len(dataset) > 0:
-                        dirname = "data/graphs/" + y + "/" + name + "/pie/"
-                        filename = name + "_" + label + ".svg"
-                        dump_pie_chart(dirname, filename, title, dataset)
                     for n, v in data[label][name].most_common(20):
                         if n not in all_items:
                             all_items[n] += v
+# Create bar chart for latest datestring
         chart_data = {}
         x_labels = []
         for item, val in all_items.most_common(20):
             chart_data[item] = []
         for s in list(reversed(range(10))):
             label = get_datestring(x, s)
-            dataset = {}
             if label in data and name in data[label]:
                 dataset = dict(data[label][name].most_common(20))
                 if len(dataset) > 0:
@@ -495,11 +499,8 @@ def create_periodic_graphs(name):
                             chart_data[item].append(0)
 
         dirname = "data/graphs/" + y + "/" + name + "/bar/"
-        if x == "hour":
-            filename = name + "_" + hour_label + ".svg"
-        else:
-            filename = name + "_" + day_label + ".svg"
-        x_labels = list(reversed(x_labels))
+        filename = name + "_" + file_label + ".svg"
+        #x_labels = list(reversed(x_labels))
         dump_bar_chart(dirname, filename, name, x_labels, chart_data)
 
 
@@ -515,19 +516,19 @@ def serialize():
     filename = "data/raw/conf.json"
     save_json(conf, filename)
 
-    custom = ["interarrivals", "description_matches", "keyword_matches", "hashtag_matches", "url_matches", "interarrival_matches", "interacted_with_bad", "interacted_with_suspicious", "suspicious_users", "suspiciousness_scores", "interesting_clusters_user", "interesting_clusters_hashtag", "interesting_clusters_keyword", "interesting_clusters_url"]
+    custom = ["description_matches", "keyword_matches", "hashtag_matches", "url_matches", "interarrival_matches", "interacted_with_bad", "interacted_with_suspicious", "suspicious_users", "suspiciousness_scores", "interesting_clusters_user", "interesting_clusters_hashtag", "interesting_clusters_keyword", "interesting_clusters_url"]
     for n in custom:
         if n in data:
             filename = "data/custom/" + n + ".json"
             save_json(data[n], filename)
 
-    raw = ["tag_map", "who_tweeted_what", "user_user_map", "user_hashtag_map", "user_cluster_map"]
+    raw = ["interarrivals", "tag_map", "who_tweeted_what", "user_user_map", "user_hashtag_map", "user_cluster_map"]
     for n in raw:
         if n in data:
             filename = "data/raw/" + n + ".json"
             save_json(data[n], filename)
 
-    jsons = ["all_users", "all_hashtags", "all_mentioned", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters"]
+    jsons = ["all_users", "all_hashtags", "influencers", "amplifiers", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters"]
     for n in jsons:
         save_output(n, "json")
 
@@ -546,7 +547,7 @@ def dump_data():
     dump_languages_graphs()
     dump_tweet_volume_graphs()
 
-    csvs = ["all_users", "all_hashtags", "all_mentioned", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters"]
+    csvs = ["amplifiers", "influencers", "all_users", "all_hashtags", "influencers", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters"]
     for n in csvs:
         save_output(n, "csv")
 
@@ -554,7 +555,7 @@ def dump_data():
 
 def dump_graphs():
     debug_print(sys._getframe().f_code.co_name)
-    graphs = ["all_users", "all_hashtags", "all_mentioned", "word_frequencies"]
+    graphs = ["all_users", "all_hashtags", "influencers", "amplifiers", "word_frequencies"]
     for g in graphs:
         create_periodic_graphs(g)
         create_overall_graphs(g)
@@ -619,7 +620,7 @@ def dump_event():
         set_counter("tweets_per_second_captured_this_interval", tcps)
         output += "Captured/sec: " + str("%.2f" % tcps) + "\n"
 
-        for key in ["all_users", "all_hashtags", "all_urls", "all_mentioned"]:
+        for key in ["all_users", "all_hashtags", "all_urls", "influencers", "amplifiers"]:
             if key in data:
                 val = len(data[key])
                 set_counter(key, val)
@@ -876,7 +877,8 @@ def process_tweet(status):
     interactions = get_interactions(status)
     if len(interactions) > 0:
         for n in interactions:
-            record_freq_dist("all_mentioned", n)
+            record_freq_dist("influencers", n)
+            record_freq_dist("amplifiers", screen_name)
         if screen_name.lower() not in [x.lower() for x in ignore_list]:
             for n in interactions:
                 if n.lower() not in [x.lower() for x in ignore_list]:
@@ -1203,10 +1205,6 @@ if __name__ == '__main__':
 # Search mode, multiple params - different save dirs, or overlapping
 # Retweet spikes - also in search mode
 # Interface the clustering code
-# Suspiciousness
 # bot detection
 # sources
 # hashtag hashtag interactions
-# word interactions
-# influencers
-# amplifiers
