@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+from process_text import *
+from file_helpers import *
+
 from nltk.stem import PorterStemmer
 from six.moves import cPickle
 from collections import Counter
@@ -28,38 +31,6 @@ def print_progress(current, maximum):
     sys.stdout.write(str(current) + "/" + str(maximum))
     sys.stdout.flush()
 
-def save_json(variable, filename):
-    with io.open(filename, "w", encoding="utf-8") as f:
-        f.write(unicode(json.dumps(variable, indent=4, ensure_ascii=False)))
-
-def load_json(filename):
-    ret = None
-    if os.path.exists(filename):
-        try:
-            with io.open(filename, "r", encoding="utf-8") as f:
-                ret = json.load(f)
-        except:
-            pass
-    return ret
-
-def try_load_or_process(filename, processor_fn, function_arg):
-    load_fn = None
-    save_fn = None
-    if filename.endswith("json"):
-        load_fn = load_json
-        save_fn = save_json
-    else:
-        load_fn = load_bin
-        save_fn = save_bin
-    if os.path.exists(filename):
-        print("Loading " + filename)
-        return load_fn(filename)
-    else:
-        ret = processor_fn(function_arg)
-        print("Saving " + filename)
-        save_fn(ret, filename)
-        return ret
-
 def load_raw_data(raw_input_file):
     ret = []
     print("Loading raw data from: " + raw_input_file)
@@ -67,23 +38,6 @@ def load_raw_data(raw_input_file):
         with io.open(raw_input_file, 'r', encoding="utf-8") as f:
             ret = f.readlines()
     return ret
-
-def preprocess_text(text):
-    valid = u"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ#@'…… "
-    url_match = u"(https?:\/\/[0-9a-zA-Z\-\_]+\.[\-\_0-9a-zA-Z]+\.?[0-9a-zA-Z\-\_]*\/?.*)"
-    name_match = u"\@[\_0-9a-zA-Z]+\:?"
-    text = re.sub(url_match, u"", text)
-    text = re.sub(name_match, u"", text)
-    text = re.sub(u"\&amp\;?", u"", text)
-    text = re.sub(u"[\:\.]{1,}$", u"", text)
-    text = re.sub(u"^RT\:?", u"", text)
-    text = re.sub(u"/", u" ", text)
-    text = re.sub(u"-", u" ", text)
-    text = re.sub(u"\w*[\…]", u"", text)
-    text = u''.join(x for x in text if x in valid)
-    text = text.strip()
-    if len(text.split()) > 5:
-        return text
 
 def process_raw_data(input_file):
     ret = []
@@ -98,98 +52,14 @@ def process_raw_data(input_file):
                     ret.append(processed)
     return ret
 
-def get_tokens(doc):
-    ret = []
-    for token in doc:
-        lemma = token.lemma_
-        pos = token.pos_
-        if pos in ["VERB", "ADJ", "ADV", "NOUN"]:
-            if lemma.lower() not in ["are", "do", "'s", "be", "is", "https//", "#", "-pron-", "so", "as", "that", "not", "who", "which", "thing", "even", "said", "says", "say", "keep", "like", "will", "have", "what", "can", "how", "get", "there", "would", "when", "then", "here", "other", "know", "let", "all"]:
-                if len(lemma) > 1:
-                    stem = stemmer.stem(lemma)
-                    ret.append(stem)
-    return ret
-
-def get_labels(doc):
-    global g_labels
-    labels = []
-    for entity in doc.ents:
-        label = entity.label_
-        text = entity.text
-        if label in ["ORG", "GPE", "PERSON", "NORP"]:
-            if len(text) > 1:
-                labels.append(text)
-                g_labels[text] += 1
-    return labels
-
-def get_hashtags(sentence):
-    ret = []
-    words = re.split(r'(\s+)', sentence)
-    for w in words:
-        if re.search("^\#[a-zA-Z0-9]+$", w):
-            if w not in ret:
-                ret.append(w)
-    return ret
-
-def process_sentence(sentence):
-    doc = nlp(sentence)
-    tags = []
-    # get tags using spacy
-    tokens = get_tokens(doc)
-    for t in tokens:
-        if t not in tags:
-            tags.append(t)
-    labels = get_labels(doc)
-    for l in labels:
-        if l not in tags:
-            tags.append(l)
-    hashtags = get_hashtags(sentence)
-    for h in hashtags:
-        if h not in tags:
-            tags.append(h)
-    # lowercase and remove duplicates
-    cons = []
-    for t in tags:
-        t = t.lower()
-        t = t.strip()
-        if t not in cons:
-            cons.append(t)
-    return cons
-
-def process_sentences(processed):
+def process_sentences(processed, lang, nlp, stemmer, stopwords):
     tag_map = {}
     print("Processing sentences.")
     num_sentences = len(processed)
     for count, sentence in enumerate(processed):
         print_progress(count + 1, num_sentences)
-        tag_map[sentence] = process_sentence(sentence)
-    filename = os.path.join(save_dir, "g_labels.json")
-    save_json(g_labels, filename)
+        tag_map[sentence] = process_sentence(sentence, lang, nlp, stemmer, stopwords)
     return tag_map
-
-def get_freq_dist(tag_map):
-    print("Creating frequency distribution.")
-    dist = Counter()
-    count = 1
-    tag_map_size = len(tag_map)
-    for tweet, tags in tag_map.iteritems():
-        print_progress(count, tag_map_size)
-        count += 1
-        for t in tags:
-            if t not in ["just", "think", "how", "need", "only", "all", "still", "even", "why", "look", "let", "most", "way", "more", "mean", "new", "must", "talk", "try", "back", "have", "seem", "will", "see", "use", "tell", "would", "should", "could", "can", "go", "are", "do", "'s", "be", "make", "want", "know", "come", "is", "https//", "#", "-pron-", "when", "here", "say", "there", "also", "quite", "so", "get", "perhaps", "as", "that", "now", "not", "then", "who", "very", "which", "then", "thing", "what", "take", "give", "show", "really", "keep", "other", "people", "man", ]:
-                dist[t] += 1
-    print
-    print("Total unique tags: " + str(len(dist)))
-    return dist
-
-def vectorize_item(tags, vocab):
-    row = []
-    for word in vocab:
-        if word in tags:
-            row.append(1)
-        else:
-            row.append(0)
-    return row
 
 def vectorize_list(tag_map, vocab, dataset):
     vectors = []
@@ -303,15 +173,21 @@ def sentence_similarity(sent1, sent2):
 
 def build_similarity_matrix(sentences):
     S = np.zeros((len(sentences), len(sentences)))
+    all_sims = []
+    average_sim = 0
     for idx1 in range(len(sentences)):
         for idx2 in range(len(sentences)):
             if idx1 != idx2:
-                S[idx1][idx2] = sentence_similarity(sentences[idx1], sentences[idx2])
+                sim = sentence_similarity(sentences[idx1], sentences[idx2])
+                S[idx1][idx2] = sim
+                all_sims.append(sim)
  
     for idx in range(len(S)):
         if S[idx].sum() != 0:
             S[idx] /= S[idx].sum()
-    return S
+    if sum(all_sims) > 0 and len(all_sims) > 0:
+        average_sim = sum(all_sims) / float(len(all_sims))
+    return S, average_sim
 
 def textrank(tag_map, sentences, top_n=5):
     if len(sentences) < 1:
@@ -321,7 +197,7 @@ def textrank(tag_map, sentences, top_n=5):
     tokenized = []
     for s in sentences:
         tokenized.append(tag_map[s])
-    S = build_similarity_matrix(tokenized)
+    S, average_sim = build_similarity_matrix(tokenized)
     if not np.all(S):
         sentence_ranks = pagerank(S)
         ranked_sentence_indexes = [item[0] for item in sorted(enumerate(sentence_ranks), key=lambda item: -item[1])]
@@ -329,58 +205,60 @@ def textrank(tag_map, sentences, top_n=5):
         summary = []
         for index in selected_sentences:
             summary.append(sentences[index])
-        return summary
+        return summary, average_sim
     else:
-        return []
+        return [], average_sim
 
 def summarize_cluster_map(tag_map, cluster_map):
     summaries = {}
-    batch_len = 200
-    filename = os.path.join(save_dir, "temp_summaries.json")
+    average_sim = {}
+    filename1 = os.path.join(save_dir, "temp_summaries.json")
+    filename2 = os.path.join(save_dir, "temp_average_sim.json")
     max_s = len(cluster_map)
     count = 0
     for cluster, tweets in cluster_map.iteritems():
         count += 1
         print_progress(count, max_s)
-        if len(tweets) > 2000:
-            batched_sum = []
-            batches = (tweets[i:i+batch_len] for i in range(0, len(tweets), batch_len))
-            for b in batches:
-                batched_sum += textrank(tag_map, b)
-            summaries[cluster] = textrank(tag_map, batched_sum)
-        else:
-            summaries[cluster] = textrank(tag_map, tweets)
-        save_json(summaries, filename)
-    return summaries
+        summaries[cluster], average_sim[cluster] = textrank(tag_map, tweets)
+        save_json(summaries, filename1)
+        save_json(average_sim, filename2)
+    return summaries, average_sim
 
-def test_predict():
+def test_predict(lang="en"):
+    filename = os.path.join(config_dir, "stopwords.json")
+    stopwords = get_stopwords(filename, lang)
+    nlp, stemmer = init_nlp_single_lang(lang)
+
+    filename = os.path.join(save_dir, "common_vocab.json")
+    common_vocab = load_json(filename)
+
+    pca = PCA()
+    filename = os.path.join(save_dir, "pca_model.sav")
+    pca = pickle.load(open(filename, "rb"))
+
+    model = KMeans()
+    filename = os.path.join(save_dir, "k_means_model.sav")
+    model = pickle.load(open(filename, "rb"))
+
     filename = os.path.join(save_dir, "data.json")
     processed = try_load_or_process(filename, process_raw_data, raw_input_file)
     print("Testing predict function.")
     for n in range(20):
-        test = processed[randint(0,len(processed)-1)]
-        print test
-        category = predict_tweet(test)
+        tweet = processed[randint(0,len(processed)-1)]
+        print tweet
+        category = predict_tweet(tweet, lang, nlp, stemmer, stopwords, common_vocab, pca, model)
         print category
 
-def predict_tweet(tweet):
+def predict_tweet(tweet, lang, nlp, stemmer, stopwords, common_vocab, pca, model):
     tweet = preprocess_text(tweet)
     if tweet is not None:
-        tags = process_sentence(tweet)
+        tags = process_sentence(tweet, lang, nlp, stemmer, stopwords)
         if tags is not None:
-            filename = os.path.join(save_dir, "common_vocab.json")
-            common_vocab = load_json(filename)
             row = vectorize_item(tags, common_vocab)
 
             Y = np.array(row)
-            pca = PCA()
-            filename = os.path.join(save_dir, "pca_model.sav")
-            pca = pickle.load(open(filename, "rb"))
             Y = pca.transform(Y.reshape(1,-1))
 
-            model = KMeans()
-            filename = os.path.join(save_dir, "k_means_model.sav")
-            model = pickle.load(open(filename, "rb"))
             prediction = model.predict(Y)
             category = "k_means_cluster" + "%02d" % prediction[0]
             return category
@@ -437,7 +315,7 @@ def compare_summaries(summaries):
     save_json(scores, filename)
     return similar
 
-def cluster_tweets(raw_input_file):
+def cluster_tweets(raw_input_file, lang, nlp, stemmer, stopwords):
     print("Preprocessing raw data")
     filename = os.path.join(save_dir, "data.json")
     processed = try_load_or_process(filename, process_raw_data, raw_input_file)
@@ -447,31 +325,83 @@ def cluster_tweets(raw_input_file):
     print("Creating tag map")
     tag_map = None
     filename = os.path.join(save_dir, "tag_map.json")
-    tag_map = try_load_or_process(filename, process_sentences, processed)
+    if os.path.exists(filename):
+        tag_map = load_json(filename)
+    else:
+        tag_map = process_sentences(processed, lang, nlp, stemmer, stopwords)
+        save_json(tag_map, filename)
 
-    clusters = cluster(tag_map, processed)
+    print("Creating clusters")
+    clusters = None
     filename = os.path.join(save_dir, "clusters.json")
-    save_json(clusters, filename)
+    if os.path.exists(filename):
+        clusters = load_json(filename)
+    else:
+        clusters = cluster(tag_map, processed)
+        save_json(clusters, filename)
 
+    print("Creating cluster tag map")
     cluster_tags = {}
-    for cname, tweets in clusters.iteritems():
-        cluster_tags[cname] = []
-        for tweet in tweets:
-            for tag in tag_map[tweet]:
-                if tag not in cluster_tags[cname]:
-                    cluster_tags[cname].append(tag)
     filename = os.path.join(save_dir, "cluster_tags.json")
-    save_json(cluster_tags, filename)
+    if os.path.exists(filename):
+        cluster_tags = load_json(filename)
+    else:
+        for cname, tweets in clusters.iteritems():
+            cluster_tags[cname] = []
+            for tweet in tweets:
+                for tag in tag_map[tweet]:
+                    if tag not in cluster_tags[cname]:
+                        cluster_tags[cname].append(tag)
+        filename = os.path.join(save_dir, "cluster_tags.json")
+        save_json(cluster_tags, filename)
 
-    print("Getting summaries for each label cluster")
-    summaries = summarize_cluster_map(tag_map, clusters)
-    filename = os.path.join(save_dir, "cluster_summaries.json")
-    save_json(summaries, filename)
+    print("Getting summaries for each cluster")
+    summaries = {}
+    average_sim = {}
+    filename1 = os.path.join(save_dir, "cluster_summaries.json")
+    filename2 = os.path.join(save_dir, "cluster_average_sim.json")
+    if os.path.exists(filename1) and os.path.exists(filename2):
+        summaries = load_json(filename1)
+        average_sim = load_json(filename2)
+    else:
+        summaries, average_sim = summarize_cluster_map(tag_map, clusters)
+        save_json(summaries, filename1)
+        save_json(average_sim, filename2)
 
     print("Looking for similar clusters.")
     similar = compare_summaries(summaries)
     filename = os.path.join(save_dir, "similar.json")
     save_json(similar, filename)
+
+    print("Consolidating similar clusters")
+    map_to_consolidated = {}
+    similar_summaries = {}
+    similar_average_sim = {}
+    for index, similar_clusters in enumerate(similar):
+        new_label = "%02d" % index
+        map_to_consolidated[new_label] = []
+        if len(similar_clusters) > 1:
+            cluster_summaries = []
+            cluster_average_sims = []
+            for label in similar_clusters:
+                map_to_consolidated[new_label].append(label)
+                for s in summaries[label]:
+                    cluster_summaries.append(s)
+                cluster_average_sims.append(average_sim[label])
+            new_summaries, new_average_sim = textrank(tag_map, cluster_summaries)
+            if sum(cluster_average_sims) > 0 and len(cluster_average_sims) > 0:
+                new_average_sim = sum(cluster_average_sims) / float(len(cluster_average_sims))
+            similar_summaries[new_label] = new_summaries
+            similar_average_sim[new_label] = new_average_sim
+        elif len(similar_clusters) > 0:
+            map_to_consolidated[new_label].append(similar_clusters[0])
+            similar_summaries[new_label] = summaries[similar_clusters[0]]
+            similar_average_sim[new_label] = average_sim[similar_clusters[0]]
+    filename = os.path.join(save_dir, "final_cluster_summaries.json")
+    save_json(similar_summaries, filename)
+    filename = os.path.join(save_dir, "final_cluster_average_sim.json")
+    save_json(similar_average_sim, filename)
+
 
 
 
@@ -490,37 +420,41 @@ def quick_compare():
 
 
 if __name__ == '__main__':
-    base_dir = ""
-    if (len(sys.argv) > 1):
-        base_dir = sys.argv[1]
-    else:
-        print("Please provide a base directory.")
-        sys.exit(0)
-
-    g_labels = Counter()
-    input_dir = os.path.join(base_dir, "data")
-    save_dir = os.path.join(base_dir, "pos")
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-
-    nlp = spacy.load("en")
     cluster_min_size = 20
     cluster_word_count = 3
     vocab_count = 15
     vocab_matches = 10
 
-    stemmer = PorterStemmer()
-    all_stopwords = load_json("stopwords-iso.json")
-    extra_stopwords = []
-    stopwords = None
-    if all_stopwords is not None:
-        stopwords = all_stopwords["en"]
-        stopwords += extra_stopwords
+    config_dir = "config"
+    input_dir = "data/raw"
+    save_dir = "clusters"
+    base_dir = None
+    if (len(sys.argv) > 1):
+        base_dir = sys.argv[1]
+
+    if base_dir is not None:
+        input_dir = os.path.join(base_dir, "data")
+        save_dir = os.path.join(base_dir, "clusters")
+        config_dir = ""
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
+    lang = "en"
+    filename = os.path.join(config_dir, "languages.txt")
+    if os.path.exists(filename):
+        langs = read_config(filename)
+        if len(langs) > 0:
+            lang = langs[0]
+    print("Got lang: " + lang)
+
+    filename = os.path.join(config_dir, "stopwords.json")
+    stopwords = get_stopwords(filename, lang)
+    nlp, stemmer = init_nlp_single_lang(lang)
 
     raw_input_file = os.path.join(input_dir, "tweets.txt")
     #quick_compare()
-    cluster_tweets(raw_input_file)
-    test_predict()
+    cluster_tweets(raw_input_file, lang, nlp, stemmer, stopwords)
+    test_predict(lang)
 
 
 

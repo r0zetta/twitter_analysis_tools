@@ -59,3 +59,57 @@ def save_list(dataset, filename):
     with io.open(filename, "w", encoding="utf-8") as f:
         for key, val in dataset:
             f.write(unicode(val) + u"\t" + unicode(key) + u"\n")
+
+def try_load_or_process(filename, processor_fn, function_arg):
+    load_fn = None
+    save_fn = None
+    if filename.endswith("json"):
+        load_fn = load_json
+        save_fn = save_json
+    else:
+        load_fn = load_bin
+        save_fn = save_bin
+    if os.path.exists(filename):
+        print("Loading " + filename)
+        return load_fn(filename)
+    else:
+        ret = processor_fn(function_arg)
+        print("Saving " + filename)
+        save_fn(ret, filename)
+        return ret
+
+def read_settings(filename):
+    ret = {}
+    if os.path.exists(filename):
+        with open(filename, "r") as file:
+            for line in file:
+                if line is not None:
+                    line = line.strip()
+                    if len(line) > 0:
+                        name, value = line.split("=")
+                        name = name.strip()
+                        value = int(value)
+                        if value == 1:
+                            ret[name] = True
+                        elif value == 0:
+                            ret[name] = False
+    return ret
+
+def read_config(filename, preserve_case=False):
+    ret = []
+    if os.path.exists(filename):
+        with io.open(filename, "r", encoding="utf-8") as file:
+            for line in file:
+                line = line.strip()
+                if preserve_case == False:
+                    line = line.lower()
+                ret.append(line)
+    return ret
+
+def get_stopwords(filename, lang):
+    if os.path.exists(filename):
+        all_stopwords = load_json(filename)
+        if lang in all_stopwords:
+            return all_stopwords[lang]
+
+

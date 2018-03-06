@@ -1,15 +1,19 @@
 # -*- coding: utf-8 -*-
+from collections import Counter
 import re
 import spacy
-from nltk.stem import PorterStemmer
+from nltk.stem.snowball import SnowballStemmer
+import spacy
 
 def get_tweet_tags(tweet):
     preprocessed = preprocess_text(tweet)
     if preprocessed is not None:
         return process_sentence(preprocessed)
 
-def preprocess_text(text):
-    valid = u"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ#@'…… "
+def preprocess_text(text, lang="en"):
+    valid = {"en": u"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ#@'…… ",
+             "fi": u"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZäöåÄÖÅ:#@…… ",
+             "sv": u"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZäöåÄÖÅ'#@…… "}
     url_match = u"(https?:\/\/[0-9a-zA-Z\-\_]+\.[\-\_0-9a-zA-Z]+\.?[0-9a-zA-Z\-\_]*\/?.*)"
     name_match = u"\@[\_0-9a-zA-Z]+\:?"
     text = re.sub(url_match, u"", text)
@@ -20,7 +24,10 @@ def preprocess_text(text):
     text = re.sub(u"/", u" ", text)
     text = re.sub(u"-", u" ", text)
     text = re.sub(u"\w*[\…]", u"", text)
-    text = u''.join(x for x in text if x in valid)
+    if lang in valid:
+        text = u''.join(x for x in text if x in valid[lang])
+    else:
+        text = u''.join(x for x in text if x in valid["en"])
     text = text.strip()
     if len(text.split()) > 5:
         return text
@@ -69,19 +76,23 @@ def tokenize_sentence(text, stopwords=None):
 
 
 
-def get_tokens(doc, stemmer):
+def get_tokens_nlp(doc, stemmer, lang="en"):
     ret = []
+    skip_tokens = {"en": ["are", "do", "'s", "be", "is", "https//", "#", "-pron-", "so", "as", "that", "not", "who", "which", "thing", "even", "said", "says", "say", "keep", "like", "will", "have", "what", "can", "how", "get", "there", "would", "when", "then", "here", "other", "know", "let", "all"],
+                   "sv": [],
+                   "fi": []}
     for token in doc:
         lemma = token.lemma_
         pos = token.pos_
         if pos in ["VERB", "ADJ", "ADV", "NOUN"]:
-            if lemma.lower() not in ["are", "do", "'s", "be", "is", "https//", "#", "-pron-", "so", "as", "that", "not", "who", "which", "thing", "even", "said", "says", "say", "keep", "like", "will", "have", "what", "can", "how", "get", "there", "would", "when", "then", "here", "other", "know", "let", "all"]:
-                if len(lemma) > 1:
-                    stem = stemmer.stem(lemma)
-                    ret.append(stem)
+            if lang in skip_tokens:
+                if lemma.lower() not in skip_tokens[lang]:
+                    if len(lemma) > 1:
+                        stem = stemmer.stem(lemma)
+                        ret.append(stem)
     return ret
 
-def get_labels(doc):
+def get_labels_nlp(doc):
     labels = []
     for entity in doc.ents:
         label = entity.label_
@@ -91,7 +102,7 @@ def get_labels(doc):
                 labels.append(text)
     return labels
 
-def get_hashtags(sentence):
+def get_hashtags_nlp(sentence):
     ret = []
     words = re.split(r'(\s+)', sentence)
     for w in words:
@@ -100,19 +111,25 @@ def get_hashtags(sentence):
                 ret.append(w)
     return ret
 
-def process_sentence_nlp(sentence, nlp, stemmer):
+def process_sentence(sentence, lang, nlp, stemmer, stopwords):
+    if nlp is not None and stemmer is not None:
+        return process_sentence_nlp(sentence, lang, nlp, stemmer)
+    else:
+        return tokenize_sentence(sentence, stopwords)
+
+def process_sentence_nlp(sentence, lang, nlp, stemmer):
     tags = []
     doc = nlp(sentence)
     # get tags using spacy
-    tokens = get_tokens(doc, stemmer)
+    tokens = get_tokens_nlp(doc, stemmer, lang)
     for t in tokens:
         if t not in tags:
             tags.append(t)
-    labels = get_labels(doc)
+    labels = get_labels_nlp(doc)
     for l in labels:
         if l not in tags:
             tags.append(l)
-    hashtags = get_hashtags(sentence)
+    hashtags = get_hashtags_nlp(sentence)
     for h in hashtags:
         if h not in tags:
             tags.append(h)
@@ -125,84 +142,77 @@ def process_sentence_nlp(sentence, nlp, stemmer):
             cons.append(t)
     return cons
 
-def is_bot_name(name):
-    ret = True
-    if re.search("^([A-Z]?[a-z]{1,})?[\_]?([A-Z]?[a-z]{1,})?[\_]?[0-9]{,9}$", name):
-        ret = False
-    if re.search("^[\_]{,3}[A-Z]{2,}[\_]{,3}$", name):
-        ret = False
-    if re.search("^[A-Z]{2}[a-z]{2,}$", name):
-        ret = False
-    if re.search("^([A-Z][a-z]{1,}){3}[0-9]?$", name):
-        ret = False
-    if re.search("^[A-Z]{1,}[a-z]{1,}[A-Z]{1,}$", name):
-        ret = False
-    if re.search("^[A-Z]{1,}[a-z]{1,}$", name):
-        ret = False
-    if re.search("^([A-Z]?[a-z]{1,}[\_]{1,}){1,}[A-Z]?[a-z]{1,}$", name):
-        ret = False
-    if re.search("^[A-Z]{1,}[a-z]{1,}[\_][A-Z][\_][A-Z]{1,}[a-z]{1,}$", name):
-        ret = False
-    if re.search("^[a-z]{1,}[A-Z][a-z]{1,}[A-Z][a-z]{1,}$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{1,}[A-Z][a-z]{1,}[A-Z]{1,}$", name):
-        ret = False
-    if re.search("^([A-Z][\_]){1,}[A-Z][a-z]{1,}$", name):
-        ret = False
-    if re.search("^[\_][A-Z][a-z]{1,}[\_][A-Z][a-z]{1,}[\_]?$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{1,}[\_][A-Z][\_][A-Z]$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{2,}[0-9][A-Z][a-z]{2,}$", name):
-        ret = False
-    if re.search("^[A-Z]{1,}[0-9]?$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{1,}[\_][A-Z]$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{1,}[A-Z]{2}[a-z]{1,}$", name):
-        ret = False
-    if re.search("^[\_]{1,}[a-z]{2,}[\_]{1,}$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{2,}[\_][A-Z][a-z]{2,}[\_][A-Z]$", name):
-        ret = False
-    if re.search("^[A-Z]?[a-z]{2,}[0-9]{2}[\_]?[A-Z]?[a-z]{2,}$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{2,}[A-Z]{1,}[0-9]{,2}$", name):
-        ret = False
-    if re.search("^[\_][A-Z][a-z]{2,}[A-Z][a-z]{2,}[\_]$", name):
-        ret = False
-    if re.search("^([A-Z][a-z]{1,}){2,}$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{2,}[\_][A-Z]{2}$", name):
-        ret = False
-    if re.search("^[a-z]{3,}[0-9][a-z]{3,}$", name):
-        ret = False
-    if re.search("^[a-z]{4,}[A-Z]{1,}$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{3,}[A-Z][0-9]{,9}$", name):
-        ret = False
-    if re.search("^[A-Z]{2,}[\_][A-Z][a-z]{3,}$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{3,}[A-Z]{1,3}[a-z]{3,}$", name):
-        ret = False
-    if re.search("^[A-Z]{3,}[a-z]{3,}[0-9]?$", name):
-        ret = False
-    if re.search("^[A-Z]?[a-z]{3,}[\_]+$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{3,}[\_][a-z]{3,}[\_][A-Za-z]{1,}$", name):
-        ret = False
-    if re.search("^[A-Z]{2,}[a-z]{3,}[A-Z][a-z]{3,}$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{2,}[A-Z][a-z]{3,}[\_]?[A-Z]{1,}$", name):
-        ret = False
-    if re.search("^[A-Z]{4,}[0-9]{2,9}$", name):
-        ret = False
-    if re.search("^[A-Z]{1,2}[a-z]{3,}[A-Z]{1,2}[a-z]{3,}[0-9]{1,9}$", name):
-        ret = False
-    if re.search("^[A-Z]+[a-z]{3,}[0-9]{1,9}$", name):
-        ret = False
-    if re.search("^([A-Z]?[a-z]{2,})+[0-9]{1,9}$", name):
-        ret = False
-    if re.search("^([A-Z]?[a-z]{2,})+\_?[a-z]+$", name):
-        ret = False
-    return ret
+def vectorize_item(tags, vocab):
+    row = []
+    for word in vocab:
+        if word in tags:
+            row.append(1)
+        else:
+            row.append(0)
+    return row
+
+def get_freq_dist(tag_map, lang="en"):
+    skip_tokens = {"en": ["just", "think", "how", "need", "only", "all", "still", "even", "why", "look", "let", "most", "way", "more", "mean", "new", "must", "talk", "try", "back", "have", "seem", "will", "see", "use", "tell", "would", "should", "could", "can", "go", "are", "do", "'s", "be", "make", "want", "know", "come", "is", "https//", "#", "-pron-", "when", "here", "say", "there", "also", "quite", "so", "get", "perhaps", "as", "that", "now", "not", "then", "who", "very", "which", "then", "thing", "what", "take", "give", "show", "really", "keep", "other", "people", "man"],
+                   "sv": [],
+                   "fi": []}
+    dist = Counter()
+    tag_map_size = len(tag_map)
+    for tweet, tags in tag_map.iteritems():
+        for t in tags:
+            if lang in skip_tokens:
+                if t not in skip_tokens[lang]:
+                    dist[t] += 1
+    print
+    print("Total unique tags: " + str(len(dist)))
+    return dist
+
+def get_spacy_supported_langs():
+    return ["en", "de", "es", "pt", "fr", "it", "nl"]
+
+def get_stemmer_supported_langs():
+    lang_map = {"da": "danish",
+                "nl": "dutch",
+                "en": "english",
+                "fi": "finnish",
+                "fr": "french",
+                "de": "german",
+                "hu": "hungarian",
+                "it": "italian",
+                "no": "norwegian",
+                "pt": "portuguese",
+                "ro": "romanian",
+                "ru": "russian",
+                "es": "spanish",
+                "sv": "swedish"}
+    return lang_map
+
+def init_nlp_multi_lang(langs=["en"]):
+    nlp = {}
+    stemmer = {}
+    spacy_supported_langs = get_spacy_supported_langs()
+    lang_map = get_stemmer_supported_langs()
+    for l in langs:
+        if l in spacy_supported_langs:
+            nlp[l] = spacy.load(l)
+            if nlp[l] is not None:
+                print("Loaded NLP processor for language: " + l)
+        if l in lang_map.keys():
+            stemmer[l] = SnowballStemmer(lang_map[l])
+            if stemmer[l] is not None:
+                print("Loaded stemmer for language: " + l)
+    return nlp, stemmer
+
+def init_nlp_single_lang(lang="en"):
+    nlp = None
+    stemmer = None
+    spacy_supported_langs = get_spacy_supported_langs()
+    if lang in spacy_supported_langs:
+        nlp = spacy.load(lang)
+    stemmer_lang_map = get_stemmer_supported_langs()
+    if lang in stemmer_lang_map:
+        stemmer = SnowballStemmer(stemmer_lang_map[lang])
+    return nlp, stemmer
+
+
+
+

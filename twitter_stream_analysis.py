@@ -1,43 +1,29 @@
 # -*- coding: utf-8 -*-
 from authentication_keys import get_account_credentials
 from time_helpers import *
-from process_text import *
 from process_tweet_object import *
 from graph_helper import *
+from process_text import *
 from file_helpers import *
 
-from nltk.stem.snowball import SnowballStemmer
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from nltk.cluster.util import cosine_distance
 from collections import Counter
 from itertools import combinations
 from twarc import Twarc
 from tweepy import OAuthHandler
 from tweepy import API
 from tweepy import Cursor
-import spacy
 import numpy as np
 import Queue
 import threading
 import sys
 import time
+import pickle
 import os
 import io
 import re
-
-spacy_supported_langs = ["en", "de", "es", "pt", "fr", "it", "nl"]
-lang_map = {"da": "danish",
-            "nl": "dutch",
-            "en": "english",
-            "fi": "finnish",
-            "fr": "french",
-            "de": "german",
-            "hu": "hungarian",
-            "it": "italian",
-            "no": "norwegian",
-            "pt": "portuguese",
-            "ro": "romanian",
-            "ru": "russian",
-            "es": "spanish",
-            "sv": "swedish"}
 
 ##################
 # Global variables
@@ -53,6 +39,18 @@ data = {}
 conf = {}
 stopwords = {}
 
+############
+# Clustering
+############
+def predict_tweet(tags):
+    category = "UNK"
+    if tags is not None:
+        row = vectorize_item(tags, common_vocab)
+        Y = np.array(row)
+        Y = pca.transform(Y.reshape(1,-1))
+        prediction = model.predict(Y)
+        category = "%02d" % prediction[0]
+    return category
 
 ##################
 # Helper functions
@@ -114,36 +112,6 @@ def save_output(name, filetype):
             write_daily_data(name, output_fn, prefix, suffix, l)
         for l in hour_labels:
             write_daily_data(name, output_fn, prefix, suffix, l)
-
-def read_settings(filename):
-    debug_print(sys._getframe().f_code.co_name)
-    config = {}
-    if os.path.exists(filename):
-        with open(filename, "r") as file:
-            for line in file:
-                if line is not None:
-                    line = line.strip()
-                    if len(line) > 0:
-                        name, value = line.split("=")
-                        name = name.strip()
-                        value = int(value)
-                        if value == 1:
-                            config[name] = True
-                        elif value == 0:
-                            config[name] = False
-    return config
-
-def read_config(filename, preserve_case=False):
-    debug_print(sys._getframe().f_code.co_name)
-    ret_array = []
-    if os.path.exists(filename):
-        with io.open(filename, "r", encoding="utf-8") as file:
-            for line in file:
-                line = line.strip()
-                if preserve_case == False:
-                    line = line.lower()
-                ret_array.append(line)
-    return ret_array
 
 def get_active_threads():
     debug_print(sys._getframe().f_code.co_name)
@@ -479,7 +447,20 @@ def dump_languages_graphs():
             title = "Language breakdown"
             dump_pie_chart(dirname, filename, title, chart_data)
 
-def create_all_graphs(name):
+def create_overall_graphs(name):
+    debug_print(sys._getframe().f_code.co_name)
+    if name in data:
+        dataset = dict(data[name].most_common(15))
+        if len(dataset) > 0:
+            title = name
+            dirname = "data/graphs/overall/" + name + "/pie/"
+            filename = name + ".svg"
+            dump_pie_chart(dirname, filename, title, dataset)
+            dirname = "data/graphs/overall/" + name + "/bar/"
+            x_labels = dataset.keys()
+            dump_bar_chart(dirname, filename, title, x_labels, dataset)
+
+def create_periodic_graphs(name):
     debug_print(sys._getframe().f_code.co_name)
     for x, y in {"hour": "hourly", "day": "daily"}.iteritems():
         x_labels = []
@@ -528,22 +509,24 @@ def create_all_graphs(name):
 
 def serialize():
     debug_print(sys._getframe().f_code.co_name)
-    filename = "data/raw/serialized.json"
-    save_json(data, filename)
+    filename = "data/raw/serialized.bin"
+    save_bin(data, filename)
     filename = "data/raw/conf.json"
     save_json(conf, filename)
 
-    custom = ["interarrivals", "description_matches", "keyword_matches", "hashtag_matches", "url_matches", "interarrival_matches", "interacted_with_bad"]
+    custom = ["interarrivals", "description_matches", "keyword_matches", "hashtag_matches", "url_matches", "interarrival_matches", "interacted_with_bad", "interesting_clusters_user", "interesting_clusters_hashtag", "interesting_clusters_keyword", "interesting_clusters_url"]
     for n in custom:
         if n in data:
             filename = "data/custom/" + n + ".json"
             save_json(data[n], filename)
 
-    if "who_tweeted_what" in data:
-        filename = "data/raw/who_tweeted_what.json"
-        save_json(data["who_tweeted_what"], filename)
+    raw = ["tag_map", "who_tweeted_what", "user_user_map", "user_hashtag_map", "user_cluster_map"]
+    for n in raw:
+        if n in data:
+            filename = "data/raw/" + n + ".json"
+            save_json(data[n], filename)
 
-    jsons = ["all_hashtags", "all_mentioned", "user_user_map", "user_hashtag_map", "tag_map", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters"]
+    jsons = ["all_hashtags", "all_mentioned", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters"]
     for n in jsons:
         save_output(n, "json")
 
@@ -569,7 +552,8 @@ def dump_graphs():
     debug_print(sys._getframe().f_code.co_name)
     graphs = ["all_hashtags", "all_mentioned", "word_frequencies"]
     for g in graphs:
-        create_all_graphs(g)
+        create_periodic_graphs(g)
+        create_overall_graphs(g)
     return
 
 def dump_event():
@@ -715,6 +699,11 @@ def process_tweet(status):
     increment_counter("tweets_processed")
 
     susp_score = 0
+    ignore_list = conf["ignore"]
+    bad_users = conf["bad_users"]
+    good_users = conf["good_users"]
+    monitored_hashtags = conf["monitored_hashtags"]
+    keywords = conf["keywords"]
     created_at = status["created_at"]
     screen_name = user["screen_name"]
     tweet_id = status["id_str"]
@@ -748,19 +737,10 @@ def process_tweet(status):
             tweet_file_handle.write(unicode(text) + u"\n")
             tweet_url_file_handle.write(unicode(tweet_url) + u"\t" + unicode(text) + u"\n")
 
-# Check text for keywords
-    if "keywords" in conf:
-        keywords = conf["keywords"]
-        matched = False
-        for k in keywords:
-            if k.lower() in text.lower():
-                matched = True
-        if matched == True:
-            record_list("keyword_matches", screen_name)
-
 # Process text, record who tweeted what, and build tag map
     debug_print("Preprocess text")
     preprocessed = preprocess_text(text)
+    cluster = None
     if "tag_map" not in data:
         data["tag_map"] = {}
     if preprocessed is not None:
@@ -769,7 +749,7 @@ def process_tweet(status):
         if preprocessed not in data["tag_map"]:
             if lang in nlp and lang in stemmer:
                 debug_print("Processing with spacy")
-                tags = process_sentence_nlp(preprocessed, nlp[lang], stemmer[lang])
+                tags = process_sentence_nlp(preprocessed, lang, nlp[lang], stemmer[lang])
             elif stopwords is not None and lang in stopwords:
                 debug_print("Tokenizing with stopwords")
                 tags = tokenize_sentence(preprocessed, stopwords[lang])
@@ -781,16 +761,27 @@ def process_tweet(status):
                 data["tag_map"][preprocessed] = tags
         else:
             tags = data["tag_map"][preprocessed]
-        for t in tags:
-            record_freq_dist("word_frequencies", t)
+        if tags is not None and len(tags) > 0:
+            for t in tags:
+                record_freq_dist("word_frequencies", t)
+            if clustering_enabled == True:
+                cluster = predict_tweet(tags)
 
+    if cluster is not None:
+        record_freq_dist_map("user_cluster_map", cluster, screen_name, False)
+
+# Check text for keywords
+    matched = False
+    for k in keywords:
+        if k.lower() in text.lower():
+            matched = True
+    if matched == True:
+        record_list("keyword_matches", screen_name)
+        if cluster is not None:
+            record_list("interesting_clusters_keyword", cluster)
 
 # Process hashtags
-    ignore_list = conf["ignore"]
     debug_print("Process hashtags")
-    monitored_hashtags = []
-    if "monitored_hashtags" in conf:
-        monitored_hashtags = conf["monitored_hashtags"]
     hashtags = get_hashtags(status)
     if len(hashtags) > 0:
         matched = False
@@ -798,11 +789,15 @@ def process_tweet(status):
             if h in monitored_hashtags:
                 matched = True
             record_freq_dist("all_hashtags", h)
+            if cluster is not None:
+                record_freq_dist_map("hashtag_cluster_map", cluster, h, False)
         if screen_name not in ignore_list:
             for h in hashtags:
                 record_freq_dist_map("user_hashtag_map", screen_name, h, False)
         if matched == True:
             record_list("hashtag_matches", screen_name)
+            if cluster is not None:
+                record_list("interesting_clusters_hashtag", cluster)
 
 # Process URLs
     debug_print("Process URLs")
@@ -827,12 +822,12 @@ def process_tweet(status):
                     record_freq_dist("fake_news_urls", u)
     if tweeted_fake_news == True:
         record_freq_dist("fake_news_tweeters", screen_name)
+        if cluster is not None:
+            record_list("interesting_clusters_url", cluster)
 
 # Process interactions
     debug_print("Process interactions")
     interactions = get_interactions(status)
-    bad_users = conf["bad_users"]
-    good_users = conf["good_users"]
     if len(interactions) > 0:
         for n in interactions:
             record_freq_dist("all_mentioned", n)
@@ -847,6 +842,11 @@ def process_tweet(status):
                             matched = True
                 if matched == True:
                     record_list("interacted_with_bad", screen_name)
+                    if cluster is not None:
+                        record_list("interesting_clusters_user", cluster)
+    if screen_name in bad_users:
+        if cluster is not None:
+            record_list("interesting_clusters_user", cluster)
 
 # Processing description
     if "description_keywords" in conf:
@@ -962,8 +962,8 @@ if __name__ == '__main__':
 
 # Deserialize from previous run
     data = {}
-    filename = "data/raw/serialized.json"
-    old_data = load_json(filename)
+    filename = "data/raw/serialized.bin"
+    old_data = load_bin(filename)
     if old_data is not None:
         data = old_data
     data = {}
@@ -992,19 +992,31 @@ if __name__ == '__main__':
     dump_file_handle = io.open("data/raw/raw.json", "a", encoding="utf-8")
     volume_file_handle = open("data/raw/tweet_volumes.txt", "a")
 
-# Init spacy
-    nlp = {}
-    stemmer = {}
+# Init spacy and stemmer
     print("Languages: " + ", ".join(conf["languages"]))
-    for l in conf["languages"]:
-        if l in spacy_supported_langs:
-            nlp[l] = spacy.load(l)
-            if nlp[l] is not None:
-                print("Loaded NLP processor for language: " + l)
-        if l in lang_map.keys():
-            stemmer[l] = SnowballStemmer(lang_map[l])
-            if stemmer[l] is not None:
-                print("Loaded stemmer for language: " + l)
+    langs = conf["languages"]
+    nlp, stemmer = init_nlp_multi_lang(langs)
+
+# Init clustering model, if available
+    cluster_dir = "clusters"
+    clustering_enabled = False
+    model_file = os.path.join(cluster_dir, "k_means_model.sav")
+    pca_file = os.path.join(cluster_dir, "pca_model.sav")
+    vocab_file = os.path.join(cluster_dir, "common_vocab.json")
+    pca = None
+    model = None
+    common_vocab = None
+    print("Attempting to load clustering model")
+    if os.path.exists(model_file) and os.path.exists(pca_file) and os.path.exists(vocab_file):
+        pca = PCA()
+        pca = pickle.load(open(pca_file, "rb"))
+        model = KMeans()
+        model = pickle.load(open(model_file, "rb"))
+        common_vocab = load_json(vocab_file)
+        clustering_enabled = True
+        print("Clustering enabled")
+    else:
+        print("Clustering disabled")
 
 # Initialize twitter object
     acct_name, consumer_key, consumer_secret, access_token, access_token_secret = get_account_credentials()
@@ -1117,3 +1129,7 @@ if __name__ == '__main__':
 # Suspiciousness
 # bot detection
 # sources
+# hashtag hashtag interactions
+# word interactions
+# influencers
+# amplifiers
