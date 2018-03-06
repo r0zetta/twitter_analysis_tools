@@ -466,8 +466,8 @@ def create_periodic_graphs(name):
         file_label = get_datestring(x)
         title = name + " " + file_label
 # Create pie chart for latest datestring
-        if file_label in dataset:
-            if name in dataset[file_label]:
+        if file_label in data:
+            if name in data[file_label]:
                 dataset = dict(data[file_label][name].most_common(15))
                 if len(dataset) > 0:
                     dirname = "data/graphs/" + y + "/" + name + "/pie/"
