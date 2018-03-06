@@ -78,7 +78,7 @@ def tokenize_sentence(text, stopwords=None):
 def get_tokens_nlp(doc, stemmer, lang="en"):
     ret = []
     skip_tokens = {"en": ["are", "do", "'s", "be", "is", "https//", "#", "-pron-", "so", "as", "that", "not", "who", "which", "thing", "even", "said", "says", "say", "keep", "like", "will", "have", "what", "can", "how", "get", "there", "would", "when", "then", "here", "other", "know", "let", "all"],
-                   "sv": [],
+                   "sv": ["sd", "in", "ta", "nr", "se", "fö", "få", "ge", "mp", "30", "kd", "ska", "vill", "kommer", "bara", "får", "finns", "gör", "går", "helt", "väl", "också", "även", "borde", "hela", "dom", "alltså", "kanske", "gå", "sitt", "nog", "genom", "skall", "annat", "kunna", "sätt", "ens", "just", "bör", "ändå", "sen", "både", "vore", "därför", "ännu", "pga"],
                    "fi": []}
     for token in doc:
         lemma = token.lemma_
@@ -152,7 +152,7 @@ def vectorize_item(tags, vocab):
 
 def get_freq_dist(tag_map, lang="en"):
     skip_tokens = {"en": ["just", "think", "how", "need", "only", "all", "still", "even", "why", "look", "let", "most", "way", "more", "mean", "new", "must", "talk", "try", "back", "have", "seem", "will", "see", "use", "tell", "would", "should", "could", "can", "go", "are", "do", "'s", "be", "make", "want", "know", "come", "is", "https//", "#", "-pron-", "when", "here", "say", "there", "also", "quite", "so", "get", "perhaps", "as", "that", "now", "not", "then", "who", "very", "which", "then", "thing", "what", "take", "give", "show", "really", "keep", "other", "people", "man"],
-                   "sv": ["sd", "in", "ta", "nr", "se", "fö", "få", "ge", "mp", "30", "kd"],
+                   "sv": ["sd", "in", "ta", "nr", "se", "fö", "få", "ge", "mp", "30", "kd", "ska", "vill", "kommer", "bara", "får", "finns", "gör", "går", "helt", "väl", "också", "även", "borde", "hela", "dom", "alltså", "kanske", "gå", "sitt", "nog", "genom", "skall", "annat", "kunna", "sätt", "ens", "just", "bör", "ändå", "sen", "både", "vore", "därför", "ännu", "pga"],
                    "fi": []}
     dist = Counter()
     tag_map_size = len(tag_map)
