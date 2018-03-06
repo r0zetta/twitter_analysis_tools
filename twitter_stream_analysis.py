@@ -123,7 +123,7 @@ def cleanup():
     if get_active_threads > 2:
         print "Waiting for queue to empty..."
         stopping = True
-    #    tweet_queue.join()
+        tweet_queue.join()
     tweet_file_handle.close()
     tweet_url_file_handle.close()
     dump_file_handle.close()
@@ -450,24 +450,22 @@ def dump_languages_graphs():
 def create_overall_graphs(name):
     debug_print(sys._getframe().f_code.co_name)
     if name in data:
-        dataset = dict(data[name].most_common(15))
+        dataset = dict(data[name].most_common(20))
         if len(dataset) > 0:
             title = name
             dirname = "data/graphs/overall/" + name + "/pie/"
             filename = name + ".svg"
             dump_pie_chart(dirname, filename, title, dataset)
             dirname = "data/graphs/overall/" + name + "/bar/"
-            x_labels = dataset.keys()
+            x_labels = []
             dump_bar_chart(dirname, filename, title, x_labels, dataset)
 
 def create_periodic_graphs(name):
     debug_print(sys._getframe().f_code.co_name)
     for x, y in {"hour": "hourly", "day": "daily"}.iteritems():
-        x_labels = []
-        all_items = []
+        all_items = Counter()
         for s in range(10):
             label = get_datestring(x, s)
-            x_labels.append(label)
             if label in data:
                 if name in data[label]:
                     title = name + " " + label
@@ -476,22 +474,25 @@ def create_periodic_graphs(name):
                         dirname = "data/graphs/" + y + "/" + name + "/pie/"
                         filename = name + "_" + label + ".svg"
                         dump_pie_chart(dirname, filename, title, dataset)
-                    for n, v in data[label][name].most_common(5):
+                    for n, v in data[label][name].most_common(20):
                         if n not in all_items:
-                            all_items.append(n)
+                            all_items[n] += v
         chart_data = {}
-        for item in all_items:
+        x_labels = []
+        for item, val in all_items.most_common(20):
             chart_data[item] = []
         for s in list(reversed(range(10))):
             label = get_datestring(x, s)
             dataset = {}
             if label in data and name in data[label]:
-                dataset = dict(data[label][name].most_common(10))
-            for item in all_items:
-                if item in dataset.keys():
-                    chart_data[item].append(dataset[item])
-                else:
-                    chart_data[item].append(0)
+                dataset = dict(data[label][name].most_common(20))
+                if len(dataset) > 0:
+                    x_labels.append(label)
+                    for item in chart_data.keys():
+                        if item in dataset.keys():
+                            chart_data[item].append(dataset[item])
+                        else:
+                            chart_data[item].append(0)
 
         dirname = "data/graphs/" + y + "/" + name + "/bar/"
         if x == "hour":

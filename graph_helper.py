@@ -2,8 +2,6 @@ import pygal
 import os
 
 def dump_bar_chart(dirname, filename, title, x_labels, chart_data):
-    if len(x_labels) < 5:
-        return
     if not os.path.exists(dirname):
         os.makedirs(dirname)
     filepath = os.path.join(dirname, filename)
@@ -15,8 +13,6 @@ def dump_bar_chart(dirname, filename, title, x_labels, chart_data):
     chart.render_to_file(filepath)
 
 def dump_line_chart(dirname, filename, title, x_labels, chart_data):
-    if len(x_labels) < 5:
-        return
     if not os.path.exists(dirname):
         os.makedirs(dirname)
     filepath = os.path.join(dirname, filename)
