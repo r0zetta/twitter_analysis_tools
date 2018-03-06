@@ -153,7 +153,7 @@ def vectorize_item(tags, vocab):
 
 def get_freq_dist(tag_map, lang="en"):
     skip_tokens = {"en": ["just", "think", "how", "need", "only", "all", "still", "even", "why", "look", "let", "most", "way", "more", "mean", "new", "must", "talk", "try", "back", "have", "seem", "will", "see", "use", "tell", "would", "should", "could", "can", "go", "are", "do", "'s", "be", "make", "want", "know", "come", "is", "https//", "#", "-pron-", "when", "here", "say", "there", "also", "quite", "so", "get", "perhaps", "as", "that", "now", "not", "then", "who", "very", "which", "then", "thing", "what", "take", "give", "show", "really", "keep", "other", "people", "man"],
-                   "sv": [],
+                   "sv": ["#", "s", "o", "sd", "in", "ta", "nr", "se", "m", "fö", "2", "c", "ge", "1", "å", "ä", "mp", "3", "30", "kd"],
                    "fi": []}
     dist = Counter()
     tag_map_size = len(tag_map)
