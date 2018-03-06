@@ -550,7 +550,7 @@ def dump_data():
     filename = "data/custom/most_suspicious.csv"
     save_counter_csv(data["suspiciousness_scores"], filename)
 
-    custom = ["description_matches", "keyword_matches", "hashtag_matches", "url_matches", "interarrival_matches", "interacted_with_bad", "interacted_with_suspicious", "suspicious_users", "interesting_clusters_user", "interesting_clusters_hashtag", "interesting_clusters_keyword", "interesting_clusters_url"]
+    custom = ["description_matches", "keyword_matches", "hashtag_matches", "url_matches", "interarrival_matches", "interacted_with_bad", "interacted_with_suspicious", "suspicious_users", "interesting_clusters_user", "interesting_clusters_hashtag", "interesting_clusters_keyword", "interesting_clusters_url", "high_frequency"]
     for n in custom:
         if n in data:
             filename = "data/custom/" + n + ".json"
@@ -739,6 +739,8 @@ def process_tweet(status):
 
     account_age_days = get_account_age_days(status)
     tweets_per_day = get_tweets_per_day(status)
+    if tweets_per_day > 100:
+        record_list("high_frequency", screen_name)
     if account_age_days < 30:
         if tweets_per_day > 100:
             susp_score += (tweets_per_day - 100) * (30 - account_age_days)
@@ -1046,21 +1048,23 @@ if __name__ == '__main__':
         stopwords = load_json("config/stopwords.json")
 
 # Deserialize from previous run
-    print("Deserializing")
     data = {}
     filename = "data/raw/serialized.bin"
-    old_data = load_bin(filename)
-    if old_data is not None:
-        data = old_data
-    else:
-        print("Serialized data was corrupted. Using backup file.")
-        tmp_file = "data/raw/serialized.bak"
-        tmp_data = load_bin(tmp_file)
-        if tmp_data is None:
-            print("Deserialization failed.")
-            sys.exit(0)
+    if os.path.exists(filename):
+        print("Attempting to deserialize from " + filename)
+        old_data = load_bin(filename)
+        if old_data is not None:
+            data = old_data
         else:
-            data = tmp_data
+            tmp_file = "data/raw/serialized.bak"
+            if os.path.exists(tmp_file):
+                print("Serialized data was corrupted. Using backup file from " + tmp_file)
+                tmp_data = load_bin(tmp_file)
+                if tmp_data is None:
+                    print("Backup file was also corrupted. Deserialization failed.")
+                    sys.exit(0)
+                else:
+                    data = tmp_data
 
     tweet_day_label = ""
     tweet_hour_label = ""
