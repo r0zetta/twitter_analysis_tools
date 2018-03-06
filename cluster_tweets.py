@@ -2,16 +2,12 @@
 from process_text import *
 from file_helpers import *
 
-from nltk.stem import PorterStemmer
-from six.moves import cPickle
 from collections import Counter
 from itertools import combinations
 from sets import Set
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from nltk.cluster.util import cosine_distance
-from operator import itemgetter
-from difflib import SequenceMatcher
 from random import randint
 import numpy as np
 import pickle
@@ -39,14 +35,14 @@ def load_raw_data(raw_input_file):
             ret = f.readlines()
     return ret
 
-def process_raw_data(input_file):
+def process_raw_data(input_file, lang="en"):
     ret = []
     lines = load_raw_data(input_file)
     if lines is not None and len(lines) > 0:
         num_lines = len(lines)
         for count, text in enumerate(lines):
             print_progress(count, num_lines)
-            processed = preprocess_text(text)
+            processed = preprocess_text(text, lang)
             if processed is not None:
                 if processed not in ret:
                     ret.append(processed)
@@ -104,6 +100,10 @@ def cluster(tag_map, tweets):
     print("Calculating frequency distribution")
     filename = os.path.join(save_dir, "freq_dist.json")
     dist = Counter(try_load_or_process(filename, get_freq_dist, tag_map))
+    filename = os.path.join(save_dir, "freq_dist_common.json")
+    with io.open(filename, "w", encoding="utf-8") as f:
+        for word, count in dist.most_common(200):
+            f.write(unicode(count) + "\t" + word + u"\n")
 
     min_hits = 5
     index = 0
@@ -241,7 +241,12 @@ def test_predict(lang="en"):
     model = pickle.load(open(filename, "rb"))
 
     filename = os.path.join(save_dir, "data.json")
-    processed = try_load_or_process(filename, process_raw_data, raw_input_file)
+    processed = []
+    if os.path.exists(filename):
+        processed = load_json(filename)
+    else:
+        processed = process_raw_data(raw_input_file, lang)
+        save_json(processed, filename)
     print("Testing predict function.")
     for n in range(20):
         tweet = processed[randint(0,len(processed)-1)]
@@ -317,8 +322,13 @@ def compare_summaries(summaries):
 
 def cluster_tweets(raw_input_file, lang, nlp, stemmer, stopwords):
     print("Preprocessing raw data")
+    processed = []
     filename = os.path.join(save_dir, "data.json")
-    processed = try_load_or_process(filename, process_raw_data, raw_input_file)
+    if os.path.exists(filename):
+        processed = load_json(filename)
+    else:
+        processed = process_raw_data(raw_input_file, lang)
+        save_json(processed, filename)
     print
     print("Unique sentences: " + str(len(processed)))
 
@@ -449,6 +459,7 @@ if __name__ == '__main__':
 
     filename = os.path.join(config_dir, "stopwords.json")
     stopwords = get_stopwords(filename, lang)
+    print("Stopwords length: " + str(len(stopwords)))
     nlp, stemmer = init_nlp_single_lang(lang)
 
     raw_input_file = os.path.join(input_dir, "tweets.txt")
