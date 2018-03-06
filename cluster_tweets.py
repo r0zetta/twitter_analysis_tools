@@ -191,9 +191,7 @@ def build_similarity_matrix(sentences):
 
 def textrank(tag_map, sentences, top_n=5):
     if len(sentences) < 1:
-        return []
-    if len(sentences) <= top_n:
-        return sentences
+        return [], 0
     tokenized = []
     for s in sentences:
         tokenized.append(tag_map[s])
@@ -219,7 +217,9 @@ def summarize_cluster_map(tag_map, cluster_map):
     for cluster, tweets in cluster_map.iteritems():
         count += 1
         print_progress(count, max_s)
-        summaries[cluster], average_sim[cluster] = textrank(tag_map, tweets)
+        summ, av =  textrank(tag_map, tweets)
+        summaries[cluster] = summ
+        average_sim[cluster] = av
         save_json(summaries, filename1)
         save_json(average_sim, filename2)
     return summaries, average_sim
