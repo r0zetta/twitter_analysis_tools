@@ -515,7 +515,7 @@ def serialize():
     filename = "data/raw/conf.json"
     save_json(conf, filename)
 
-    custom = ["interarrivals", "description_matches", "keyword_matches", "hashtag_matches", "url_matches", "interarrival_matches", "interacted_with_bad", "interesting_clusters_user", "interesting_clusters_hashtag", "interesting_clusters_keyword", "interesting_clusters_url"]
+    custom = ["interarrivals", "description_matches", "keyword_matches", "hashtag_matches", "url_matches", "interarrival_matches", "interacted_with_bad", "interacted_with_suspicious", "suspicious_users", "suspiciousness_scores", "interesting_clusters_user", "interesting_clusters_hashtag", "interesting_clusters_keyword", "interesting_clusters_url"]
     for n in custom:
         if n in data:
             filename = "data/custom/" + n + ".json"
@@ -527,13 +527,16 @@ def serialize():
             filename = "data/raw/" + n + ".json"
             save_json(data[n], filename)
 
-    jsons = ["all_hashtags", "all_mentioned", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters"]
+    jsons = ["all_users", "all_hashtags", "all_mentioned", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters"]
     for n in jsons:
         save_output(n, "json")
 
-    gephis = ["user_user_map", "user_hashtag_map"]
+    gephis = ["user_user_map", "user_hashtag_map", "user_cluster_map"]
     for n in gephis:
         save_output(n, "gephi")
+
+    filename = "data/custom/most_suspicious.csv"
+    save_counter_csv(data["suspiciousness_scores"], filename)
 
     return
 
@@ -543,7 +546,7 @@ def dump_data():
     dump_languages_graphs()
     dump_tweet_volume_graphs()
 
-    csvs = ["all_hashtags", "all_mentioned", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters"]
+    csvs = ["all_users", "all_hashtags", "all_mentioned", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters"]
     for n in csvs:
         save_output(n, "csv")
 
@@ -551,7 +554,7 @@ def dump_data():
 
 def dump_graphs():
     debug_print(sys._getframe().f_code.co_name)
-    graphs = ["all_hashtags", "all_mentioned", "word_frequencies"]
+    graphs = ["all_users", "all_hashtags", "all_mentioned", "word_frequencies"]
     for g in graphs:
         create_periodic_graphs(g)
         create_overall_graphs(g)
@@ -615,6 +618,12 @@ def dump_event():
         tcps = float(float(get_counter("tweets_captured_this_interval"))/float(processing_time))
         set_counter("tweets_per_second_captured_this_interval", tcps)
         output += "Captured/sec: " + str("%.2f" % tcps) + "\n"
+
+        for key in ["all_users", "all_hashtags", "all_urls", "all_mentioned"]:
+            if key in data:
+                val = len(data[key])
+                set_counter(key, val)
+                output += key + ": " + str(val) + "\n"
 
         nodes, edges = get_network_params()
         output += "Nodes: " + str(nodes) + " Edges: " + str(edges) + "\n"
@@ -705,13 +714,46 @@ def process_tweet(status):
     good_users = conf["good_users"]
     monitored_hashtags = conf["monitored_hashtags"]
     keywords = conf["keywords"]
+    description_keywords = conf["description_keywords"]
+    fake_news_sources = conf["fake_news_sources"]
+    url_keywords = conf["url_keywords"]
+
     created_at = status["created_at"]
     screen_name = user["screen_name"]
+    record_freq_dist("all_users", screen_name)
     tweet_id = status["id_str"]
     user_id = user["id_str"]
     lang = status["lang"]
     text = text.strip()
     text = re.sub("\n", " ", text)
+
+    if is_egg(status):
+        susp_score += 100
+
+    account_age_days = get_account_age_days(status)
+    tweets_per_day = get_tweets_per_day(status)
+    if account_age_days < 30:
+        if tweets_per_day > 100:
+            susp_score += (tweets_per_day - 100) * (30 - account_age_days)
+    else:
+        susp_score += tweets_per_day - 100
+
+    followers_count = get_followers_count(status)
+    if followers_count < 100:
+        if tweets_per_day > 100:
+            susp_score += tweets_per_day - 100
+
+    if account_age_days > 30 and followers_count < 5:
+        susp_score += 100
+
+    friends_count = get_friends_count(status)
+    follow_ratio = 0
+    if friends_count > 0 and followers_count > 0:
+        follow_ratio = float(friends_count)/float(followers_count)
+    if follow_ratio < 1.2:
+        susp_score += (follow_ratio * 5)
+
+
 
 # Create some useable time formats
     tweet_time_object = twitter_time_to_object(created_at)
@@ -723,6 +765,7 @@ def process_tweet(status):
     record_interarrival(screen_name, tweet_time_unix)
     interarrival_stdev = calculate_interarrival_statistics(screen_name)
     if interarrival_stdev > 0:
+        susp_score += interarrival_stdev * 10
         if "interarrival_matches" not in data:
             data["interarrival_matches"] = {}
         data["interarrival_matches"][screen_name] = interarrival_stdev
@@ -738,7 +781,7 @@ def process_tweet(status):
             tweet_file_handle.write(unicode(text) + u"\n")
             tweet_url_file_handle.write(unicode(tweet_url) + u"\t" + unicode(text) + u"\n")
 
-# Process text, record who tweeted what, and build tag map
+# Process text, record who tweeted what, which cluster the tweets belongs to, and build tag map
     debug_print("Preprocess text")
     preprocessed = preprocess_text(text)
     cluster = None
@@ -775,6 +818,7 @@ def process_tweet(status):
     matched = False
     for k in keywords:
         if k.lower() in text.lower():
+            susp_score += 100
             matched = True
     if matched == True:
         record_list("keyword_matches", screen_name)
@@ -787,12 +831,13 @@ def process_tweet(status):
     if len(hashtags) > 0:
         matched = False
         for h in hashtags:
-            if h in monitored_hashtags:
+            if h.lower() in [x.lower() for x in monitored_hashtags]:
+                susp_score += 100
                 matched = True
             record_freq_dist("all_hashtags", h)
             if cluster is not None:
                 record_freq_dist_map("hashtag_cluster_map", cluster, h, False)
-        if screen_name not in ignore_list:
+        if screen_name.lower() not in [x.lower() for x in ignore_list]:
             for h in hashtags:
                 record_freq_dist_map("user_hashtag_map", screen_name, h, False)
         if matched == True:
@@ -803,8 +848,6 @@ def process_tweet(status):
 # Process URLs
     debug_print("Process URLs")
     urls = get_urls(status)
-    fake_news_sources = conf["fake_news_sources"]
-    url_keywords = conf["url_keywords"]
     tweeted_fake_news = False
     if len(urls) > 0:
         for u in urls:
@@ -814,6 +857,7 @@ def process_tweet(status):
             matched = False
             for k in url_keywords:
                 if k in u:
+                    susp_score += 100
                     matched = True
             if matched == True:
                 record_list("url_matches", u)
@@ -821,6 +865,7 @@ def process_tweet(status):
                 if f in u:
                     tweeted_fake_news = True
                     record_freq_dist("fake_news_urls", u)
+                    susp_score += 100
     if tweeted_fake_news == True:
         record_freq_dist("fake_news_tweeters", screen_name)
         if cluster is not None:
@@ -832,36 +877,66 @@ def process_tweet(status):
     if len(interactions) > 0:
         for n in interactions:
             record_freq_dist("all_mentioned", n)
-        if screen_name not in ignore_list:
+        if screen_name.lower() not in [x.lower() for x in ignore_list]:
             for n in interactions:
-                if n not in ignore_list:
+                if n.lower() not in [x.lower() for x in ignore_list]:
                     record_freq_dist_map("user_user_map", screen_name, n, False)
-                matched = False
-                if screen_name not in good_users:
+                matched_bad = False
+                matched_susp = False
+                if screen_name.lower() not in [x.lower() for x in good_users]:
                     for u in bad_users:
-                        if u == n:
-                            matched = True
-                if matched == True:
+                        if u.lower() == n.lower():
+                            susp_score += 100
+                            matched_bad = True
+                    if "suspicious_users" in data:
+                        for u in data["suspicious_users"]:
+                            if u.lower() == n.lower():
+                                susp_score += 100
+                                matched_susp = True
+                if matched_bad == True:
                     record_list("interacted_with_bad", screen_name)
                     if cluster is not None:
                         record_list("interesting_clusters_user", cluster)
-    if screen_name in bad_users:
+                if matched_susp == True:
+                    record_list("interacted_with_suspicious", screen_name)
+                    if cluster is not None:
+                        record_list("interesting_clusters_user", cluster)
+
+    if screen_name.lower() in [x.lower() for x in bad_users]:
         if cluster is not None:
             record_list("interesting_clusters_user", cluster)
 
+    if is_bot_name(screen_name):
+        susp_score += 100
+
 # Processing description
-    if "description_keywords" in conf:
-        keywords = conf["description_keywords"]
-        if "description" in user:
-            description = user["description"]
-            if description is not None:
-                description = description.lower()
-                matched = False
-                for k in keywords:
-                    if k.lower() in description:
-                        matched = True
-                if matched == True:
-                    record_list("description_matches", screen_name)
+    if "description" in user:
+        description = user["description"]
+        if description is None:
+            susp_score += 100
+        else:
+            description = description.lower()
+            if len(description) < 1:
+                susp_score += 100
+            matched = False
+            for k in description_keywords:
+                if k.lower() in description:
+                    matched = True
+            if matched == True:
+                record_list("description_matches", screen_name)
+                susp_score += 100
+
+
+# Known users get a zero suspiciousness
+    if screen_name.lower() in [x.lower() for x in good_users]:
+        susp_score = 0
+
+    if susp_score > 900:
+        record_list("suspicious_users", screen_name)
+
+    if "suspiciousness_scores" not in data:
+        data["suspiciousness_scores"] = Counter()
+    data["suspiciousness_scores"][screen_name] = int(susp_score)
 
     debug_print("Done processing")
     return
@@ -962,6 +1037,7 @@ if __name__ == '__main__':
         stopwords = load_json("config/stopwords.json")
 
 # Deserialize from previous run
+    print("Deserializing")
     data = {}
     filename = "data/raw/serialized.bin"
     old_data = load_bin(filename)

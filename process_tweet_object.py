@@ -210,19 +210,61 @@ def is_egg(status):
                 return False
     return True
 
+def get_account_age_days(status):
+    ret = 0
+    if "user" in status:
+        user = status["user"]
+        created_at = user["created_at"]
+        ret = seconds_to_days(seconds_since_twitter_time(created_at))
+    return ret
+
+def get_tweet_count(status):
+    ret = 0
+    if "user" in status:
+        user = status["user"]
+        ret = user["statuses_count"]
+    return ret
+
+def get_tweets_per_day(status):
+    ret = 0
+    account_age_days = get_account_age_days(status)
+    num_tweets = get_tweet_count(status)
+    if account_age_days > 0 and num_tweets > 0:
+        ret = account_age_days / float(num_tweets)
+    return ret
+
+def get_friends_count(status):
+    ret = 0
+    if "user" in status:
+        user = status["user"]
+        if "friends_count" in user:
+            ret = user["friends_count"]
+    return ret
+
+def get_followers_count(status):
+    ret = 0
+    if "user" in status:
+        user = status["user"]
+        if "followers_count" in user:
+            ret = user["followers_count"]
+    return ret
+
 def is_new_account_bot(status):
     ret = False
     ad = AlphabetDetector()
     susp_score = 0
     egg = is_egg(status)
-    sn = status["screen_name"]
-    n = status["name"]
+    if "user" not in status:
+        return
+    user = status["user"]
+    sn = user["screen_name"]
+    n = user["name"]
     bot_name = is_bot_name(sn)
-    tweets = status["statuses_count"]
-    friends = status["friends_count"]
-    followers = status["followers_count"]
-    created_at = status["created_at"]
-    location = status["location"]
+    tweets = user["statuses_count"]
+    friends = user["friends_count"]
+    followers = user["followers_count"]
+    created_at = user["created_at"]
+    location = user["location"]
     time_obj = twitter_time_to_object(created_at)
     created_year = int(time_obj.strftime("%Y"))
     if egg == True:
