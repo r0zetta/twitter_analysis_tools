@@ -96,10 +96,14 @@ def make_clusters(X, tweets, pca_k, num_k, rand_seed):
         clusters[category].append(tweets[index])
     return clusters, model, pca
 
-def cluster(tag_map, tweets):
+def cluster(tag_map, tweets, lang="en"):
     print("Calculating frequency distribution")
     filename = os.path.join(save_dir, "freq_dist.json")
-    dist = Counter(try_load_or_process(filename, get_freq_dist, tag_map))
+    if os.path.exists(filename):
+        dist = load_json(filename)
+    else:
+        dist = get_freq_dist(tag_map, lang)
+        save_json(dist, filename)
     filename = os.path.join(save_dir, "freq_dist_common.json")
     with io.open(filename, "w", encoding="utf-8") as f:
         for word, count in dist.most_common(200):
@@ -347,7 +351,7 @@ def cluster_tweets(raw_input_file, lang, nlp, stemmer, stopwords):
     if os.path.exists(filename):
         clusters = load_json(filename)
     else:
-        clusters = cluster(tag_map, processed)
+        clusters = cluster(tag_map, processed, lang)
         save_json(clusters, filename)
 
     print("Creating cluster tag map")
