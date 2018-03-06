@@ -146,8 +146,8 @@ def load_settings():
         conf[p] = read_config(filename)
     conf["params"] = {}
     conf["params"]["default_dump_interval"] = 10
-    conf["params"]["serialization_interval"] = 10
-    conf["params"]["graph_dump_interval"] = 10
+    conf["params"]["serialization_interval"] = 180
+    conf["params"]["graph_dump_interval"] = 60
 
 
 ##########
@@ -511,34 +511,26 @@ def create_periodic_graphs(name):
 
 def serialize():
     debug_print(sys._getframe().f_code.co_name)
+    tmp_file = "data/raw/serialized.bak"
     filename = "data/raw/serialized.bin"
+    os.rename(filename, tmp_file)
     save_bin(data, filename)
-    filename = "data/raw/conf.json"
-    save_json(conf, filename)
 
-    custom = ["description_matches", "keyword_matches", "hashtag_matches", "url_matches", "interarrival_matches", "interacted_with_bad", "interacted_with_suspicious", "suspicious_users", "suspiciousness_scores", "interesting_clusters_user", "interesting_clusters_hashtag", "interesting_clusters_keyword", "interesting_clusters_url"]
-    for n in custom:
-        if n in data:
-            filename = "data/custom/" + n + ".json"
-            save_json(data[n], filename)
+# These get dumped when we exit
+    if stopping == True:
+        print("Script stopping. Performing extended serialization.")
+        filename = "data/raw/conf.json"
+        save_json(conf, filename)
 
-    raw = ["interarrivals", "tag_map", "who_tweeted_what", "user_user_map", "user_hashtag_map", "user_cluster_map"]
-    for n in raw:
-        if n in data:
-            filename = "data/raw/" + n + ".json"
-            save_json(data[n], filename)
+        raw = ["interarrivals", "tag_map", "who_tweeted_what", "user_user_map", "user_hashtag_map", "user_cluster_map"]
+        for n in raw:
+            if n in data:
+                filename = "data/raw/" + n + ".json"
+                save_json(data[n], filename)
 
-    jsons = ["all_users", "all_hashtags", "influencers", "amplifiers", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters"]
-    for n in jsons:
-        save_output(n, "json")
-
-    gephis = ["user_user_map", "user_hashtag_map", "user_cluster_map"]
-    for n in gephis:
-        save_output(n, "gephi")
-
-    filename = "data/custom/most_suspicious.csv"
-    save_counter_csv(data["suspiciousness_scores"], filename)
-
+        jsons = ["all_users", "all_hashtags", "influencers", "amplifiers", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters", "suspiciousness_scores"]
+        for n in jsons:
+            save_output(n, "json")
     return
 
 def dump_data():
@@ -547,15 +539,28 @@ def dump_data():
     dump_languages_graphs()
     dump_tweet_volume_graphs()
 
-    csvs = ["amplifiers", "influencers", "all_users", "all_hashtags", "influencers", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters"]
+    csvs = ["amplifiers", "influencers", "all_users", "all_hashtags", "influencers", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters", "cluster_counts"]
     for n in csvs:
         save_output(n, "csv")
+
+    gephis = ["user_user_map", "user_hashtag_map", "user_cluster_map"]
+    for n in gephis:
+        save_output(n, "gephi")
+
+    filename = "data/custom/most_suspicious.csv"
+    save_counter_csv(data["suspiciousness_scores"], filename)
+
+    custom = ["description_matches", "keyword_matches", "hashtag_matches", "url_matches", "interarrival_matches", "interacted_with_bad", "interacted_with_suspicious", "suspicious_users", "interesting_clusters_user", "interesting_clusters_hashtag", "interesting_clusters_keyword", "interesting_clusters_url"]
+    for n in custom:
+        if n in data:
+            filename = "data/custom/" + n + ".json"
+            save_json(data[n], filename)
 
     return
 
 def dump_graphs():
     debug_print(sys._getframe().f_code.co_name)
-    graphs = ["all_users", "all_hashtags", "influencers", "amplifiers", "word_frequencies"]
+    graphs = ["all_users", "all_hashtags", "influencers", "amplifiers", "word_frequencies", "cluster_counts"]
     for g in graphs:
         create_periodic_graphs(g)
         create_overall_graphs(g)
@@ -620,7 +625,7 @@ def dump_event():
         set_counter("tweets_per_second_captured_this_interval", tcps)
         output += "Captured/sec: " + str("%.2f" % tcps) + "\n"
 
-        for key in ["all_users", "all_hashtags", "all_urls", "influencers", "amplifiers"]:
+        for key in ["all_users", "all_hashtags", "all_urls", "influencers", "amplifiers", "suspicious_users", "interacted_with_bad", "interacted_with_suspicious", "keyword_matches", "hashtag_matches", "description_matches", "url_matches"]:
             if key in data:
                 val = len(data[key])
                 set_counter(key, val)
@@ -644,6 +649,7 @@ def dump_event():
 
         set_counter("average_tweets_per_second", tcps)
         set_counter("previous_dump_time", int(time.time()))
+        #os.system('clear')
         print
         print output
 
@@ -813,6 +819,7 @@ def process_tweet(status):
                 cluster = predict_tweet(tags)
 
     if cluster is not None:
+        record_freq_dist("cluster_counts", cluster)
         record_freq_dist_map("user_cluster_map", cluster, screen_name, False)
 
 # Check text for keywords
@@ -1045,7 +1052,15 @@ if __name__ == '__main__':
     old_data = load_bin(filename)
     if old_data is not None:
         data = old_data
-    data = {}
+    else:
+        print("Serialized data was corrupted. Using backup file.")
+        tmp_file = "data/raw/serialized.bak"
+        tmp_data = load_bin(tmp_file)
+        if tmp_data is None:
+            print("Deserialization failed.")
+            sys.exit(0)
+        else:
+            data = tmp_data
 
     tweet_day_label = ""
     tweet_hour_label = ""
