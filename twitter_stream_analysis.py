@@ -313,9 +313,6 @@ def get_network_params():
         nodes = len(nodeset)
     return nodes, edges
 
-
-
-
 ######################
 # Follow functionality
 ######################
@@ -346,43 +343,6 @@ def get_ids_from_names(names):
             found_names.append(d["screen_name"])
     not_found = list(set([x.lower() for x in names]) - set([x.lower() for x in found_names]))
     return ret, not_found
-
-
-
-
-
-
-#############
-# Dump text
-#############
-def dump_counters():
-    debug_print(sys._getframe().f_code.co_name)
-    counter_dump = get_all_counters()
-    val_output = ""
-    date_output = ""
-    if counter_dump is not None:
-        for n, c in sorted(counter_dump.iteritems()):
-            val = None
-            if type(c) is float:
-                val = "%.2f"%c
-                val_output += unicode(val) + u"\t" + unicode(n) + u"\n"
-            elif len(str(c)) > 9:
-                val = unix_time_to_readable(int(c))
-                date_output += unicode(val) + u"\t" + unicode(n) + u"\n"
-            else:
-                val = c
-                val_output += unicode(val) + u"\t" + unicode(n) + u"\n"
-    handle = io.open("data/_counters.txt", "w", encoding='utf-8')
-    handle.write(unicode(val_output))
-    handle.write(u"\n")
-    handle.write(unicode(date_output))
-    handle.close
-
-
-
-
-
-
 
 #############
 # Dump graphs
@@ -507,11 +467,32 @@ def create_periodic_graphs(name):
         #x_labels = list(reversed(x_labels))
         dump_bar_chart(dirname, filename, title, x_labels, chart_data)
 
-
-
 ########################
 # Periodically dump data
 ########################
+
+def dump_counters():
+    debug_print(sys._getframe().f_code.co_name)
+    counter_dump = get_all_counters()
+    val_output = ""
+    date_output = ""
+    if counter_dump is not None:
+        for n, c in sorted(counter_dump.iteritems()):
+            val = None
+            if type(c) is float:
+                val = "%.2f"%c
+                val_output += unicode(val) + u"\t" + unicode(n) + u"\n"
+            elif len(str(c)) > 9:
+                val = unix_time_to_readable(int(c))
+                date_output += unicode(val) + u"\t" + unicode(n) + u"\n"
+            else:
+                val = c
+                val_output += unicode(val) + u"\t" + unicode(n) + u"\n"
+    handle = io.open("data/_counters.txt", "w", encoding='utf-8')
+    handle.write(unicode(val_output))
+    handle.write(u"\n")
+    handle.write(unicode(date_output))
+    handle.close
 
 def serialize():
     debug_print(sys._getframe().f_code.co_name)
@@ -560,7 +541,6 @@ def dump_data():
         if n in data:
             filename = "data/custom/" + n + ".json"
             save_json(data[n], filename)
-
     return
 
 def dump_graphs():
@@ -683,14 +663,6 @@ def dump_event():
                 del(data[offset_label])
         return
 
-
-
-
-
-
-
-
-
 ###############
 # Process tweet
 ###############
@@ -766,8 +738,6 @@ def process_tweet(status):
         follow_ratio = float(friends_count)/float(followers_count)
     if follow_ratio < 1.2:
         susp_score += (follow_ratio * 5)
-
-
 
 # Create some useable time formats
     tweet_time_object = twitter_time_to_object(created_at)
@@ -956,7 +926,6 @@ def process_tweet(status):
 
     debug_print("Done processing")
     return
-
 
 def preprocess_tweet(status):
     debug_print(sys._getframe().f_code.co_name)
@@ -1220,12 +1189,8 @@ if __name__ == '__main__':
                 cleanup()
                 sys.exit(0)
 
-
-
 # ToDo:
 # Search mode, multiple params - different save dirs, or overlapping
 # Retweet spikes - also in search mode
-# Interface the clustering code
-# bot detection
 # sources
 # hashtag hashtag interactions
