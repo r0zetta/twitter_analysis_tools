@@ -464,13 +464,15 @@ def create_periodic_graphs(name):
     debug_print(sys._getframe().f_code.co_name)
     for x, y in {"hour": "hourly", "day": "daily"}.iteritems():
         file_label = get_datestring(x)
-# Create pie chart for latest datestring
         title = name + " " + file_label
-        dataset = dict(data[file_label][name].most_common(15))
-        if len(dataset) > 0:
-            dirname = "data/graphs/" + y + "/" + name + "/pie/"
-            filename = name + "_" + file_label + ".svg"
-            dump_pie_chart(dirname, filename, title, dataset)
+# Create pie chart for latest datestring
+        if file_label in dataset:
+            if name in dataset[file_label]:
+                dataset = dict(data[file_label][name].most_common(15))
+                if len(dataset) > 0:
+                    dirname = "data/graphs/" + y + "/" + name + "/pie/"
+                    filename = name + "_" + file_label + ".svg"
+                    dump_pie_chart(dirname, filename, title, dataset)
 
 # Get all items from last 10 datestrings
         all_items = Counter()
@@ -501,7 +503,7 @@ def create_periodic_graphs(name):
         dirname = "data/graphs/" + y + "/" + name + "/bar/"
         filename = name + "_" + file_label + ".svg"
         #x_labels = list(reversed(x_labels))
-        dump_bar_chart(dirname, filename, name, x_labels, chart_data)
+        dump_bar_chart(dirname, filename, title, x_labels, chart_data)
 
 
 
