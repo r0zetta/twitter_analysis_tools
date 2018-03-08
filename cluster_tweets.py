@@ -100,7 +100,7 @@ def cluster(tag_map, tweets, lang="en"):
     print("Calculating frequency distribution")
     filename = os.path.join(save_dir, "freq_dist.json")
     if os.path.exists(filename):
-        dist = load_json(filename)
+        dist = Counter(load_json(filename))
     else:
         dist = get_freq_dist(tag_map, lang)
         save_json(dist, filename)

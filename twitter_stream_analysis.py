@@ -767,7 +767,7 @@ def process_tweet(status):
 
 # Process text, record who tweeted what, which cluster the tweets belongs to, and build tag map
     debug_print("Preprocess text")
-    preprocessed = preprocess_text(text)
+    preprocessed = preprocess_text(text, lang)
     cluster = None
     if "tag_map" not in data:
         data["tag_map"] = {}
