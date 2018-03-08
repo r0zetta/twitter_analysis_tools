@@ -113,14 +113,13 @@ def save_output(name, filetype):
         for l in hour_labels:
             write_daily_data(name, output_fn, prefix, suffix, l)
 
-def get_active_threads():
-    debug_print(sys._getframe().f_code.co_name)
-    return len(threading.enumerate())
 
 def cleanup():
     debug_print(sys._getframe().f_code.co_name)
     global dump_file_handle, volume_file_handle, tweet_file_handle, tweet_url_file_handle, stopping
-    if get_active_threads > 2:
+    script_end_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
+    conf["last_stopped"] = script_end_time_str
+    if len(threading.enumerate()) > 2:
         print "Waiting for queue to empty..."
         stopping = True
         tweet_queue.join()
@@ -316,7 +315,7 @@ def get_network_params():
 ######################
 # Follow functionality
 ######################
-def get_account_data_for_names(names):
+def get_ids_from_names(names):
     print("Got " + str(len(names)) + " names.")
     auth = OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_token_secret)
@@ -324,17 +323,14 @@ def get_account_data_for_names(names):
 
     batch_len = 100
     batches = (names[i:i+batch_len] for i in range(0, len(names), batch_len))
-    ret = []
+    all_json = []
     for batch_count, batch in enumerate(batches):
         users_list = auth_api.lookup_users(screen_names=batch)
         users_json = (map(lambda t: t._json, users_list))
-        ret += users_json
-    return ret
+        all_json += users_json
 
-def get_ids_from_names(names):
     ret = []
     found_names = []
-    all_json = get_account_data_for_names(names)
     for d in all_json:
         if "id_str" in d:
             id_str = d["id_str"]
@@ -1099,10 +1095,13 @@ if __name__ == '__main__':
     query = ""
     if follow == True:
         print("Listening to accounts")
+        conf["mode"] = "follow"
         to_follow = []
         if len(input_params) > 0:
             to_follow = input_params
+            conf["input"] = "command_line"
         else:
+            conf["input"] = "config_file"
             to_follow = read_config("config/follow.txt")
             to_follow = [x.lower() for x in to_follow]
         if len(to_follow) < 1:
@@ -1118,14 +1117,19 @@ if __name__ == '__main__':
             print("No account IDs found.")
             sys.exit(0)
         query = ",".join(id_list)
+        conf["query"] = query
+        conf["ids"] = id_list
         print "Preparing stream"
         print "IDs: " + query
     elif search == True:
+        conf["mode"] = "search"
         print("Performing Twitter search")
         searches = []
         if len(input_params) > 0:
             searches = input_params
+            conf["input"] = "command_line"
         else:
+            conf["input"] = "config_file"
             searches = read_config("config/search.txt")
             searches = [x.lower() for x in searches]
         if len(searches) < 1:
@@ -1135,17 +1139,22 @@ if __name__ == '__main__':
             print("Search can only handle one search term (for now).")
             sys.exit(0)
         query = searches[0]
+        conf["query"] = query
         print "Preparing search"
         print "Query: " + query
     else:
+        conf["mode"] = "search"
         print("Listening to Twitter search stream")
         targets = []
         if len(input_params) > 0:
             targets = input_params
+            conf["input"] = "command_line"
         else:
+            conf["input"] = "config_file"
             targets = read_config("config/targets.txt")
         if len(targets) > 0:
             query = ",".join(targets)
+            conf["query"] = query
             print "Preparing stream"
             if query == "":
                 print "Getting 1% sample."
@@ -1157,6 +1166,7 @@ if __name__ == '__main__':
 
 # Start stream
     script_start_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
+    conf["first_started"] = script_start_time_str
     filename = "data/raw/conf.json"
     save_json(conf, filename)
     if search == True:
