@@ -103,7 +103,8 @@ def read_config(filename, preserve_case=False):
                 line = line.strip()
                 if preserve_case == False:
                     line = line.lower()
-                ret.append(line)
+                if len(line) > 0:
+                    ret.append(line)
     return ret
 
 def get_stopwords(filename, lang):

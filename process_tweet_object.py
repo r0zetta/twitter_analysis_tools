@@ -241,6 +241,18 @@ def get_friends_count(status):
             ret = user["friends_count"]
     return ret
 
+def get_profile_image_url(status):
+    if "user" in status:
+        user = status["user"]
+        if "profile_image_url" in user:
+            return user["profile_image_url"]
+
+def get_user_id(status):
+    if "user" in status:
+        user = status["user"]
+        if "id_str" in user:
+            return user["id_str"]
+
 def get_followers_count(status):
     ret = 0
     if "user" in status:
