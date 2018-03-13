@@ -54,7 +54,11 @@ def process_sentences(processed, lang, nlp, stemmer, stopwords):
     num_sentences = len(processed)
     for count, sentence in enumerate(processed):
         print_progress(count + 1, num_sentences)
-        tag_map[sentence] = process_sentence(sentence, lang, nlp, stemmer, stopwords)
+        tags = process_sentence(sentence, lang, nlp, stemmer, stopwords)
+        if tags is not None:
+            tag_map[sentence] = tags
+        else:
+            tag_map[sentence] = []
     return tag_map
 
 def vectorize_list(tag_map, vocab, dataset):

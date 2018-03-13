@@ -53,7 +53,7 @@ def tokenize_sentence(text, stopwords=None):
             if w is not None:
                 tokens.append(w)
     if len(tokens) < 1:
-        return
+        return []
 # Remove stopwords and other undesirable tokens
     cleaned = []
     for token in tokens:
@@ -70,7 +70,7 @@ def tokenize_sentence(text, stopwords=None):
             if token is not None:
                 cleaned.append(token)
     if len(cleaned) < 1:
-        return
+        return []
     return cleaned
 
 
@@ -143,10 +143,14 @@ def process_sentence_nlp(sentence, lang, nlp, stemmer):
 
 def vectorize_item(tags, vocab):
     row = []
-    for word in vocab:
-        if word in tags:
-            row.append(1)
-        else:
+    if tags is not None:
+        for word in vocab:
+            if word in tags:
+                row.append(1)
+            else:
+                row.append(0)
+    else:
+        for word in vocab:
             row.append(0)
     return row
 
@@ -155,17 +159,17 @@ def get_freq_dist(tag_map, lang="en"):
                    "sv": ["t", "s", "o", "#", "m", "2", "c", "1", "3", "4", "03", "000", "a", "in", "ta", "nr", "se", "fö", "få", "ge", "30", "ska", "vill", "kommer", "bara", "får", "finns", "gör", "går", "helt", "väl", "också", "även", "borde", "hela", "dom", "alltså", "kanske", "gå", "sitt", "nog", "genom", "skall", "annat", "kunna", "sätt", "ens", "just", "bör", "ändå", "sen", "både", "vore", "därför", "ännu", "pga", "får", "gör", "få", "går", "tycker", "väl", "tror", "ser", "lite", "göra", "också", "även", "tar", "vet", "behöver", "två", "alltså", "igen", "står", "verkar", "redan", "gå", "dags", "inför", "håller", "lika", "fram", "del", "enligt", "ger", "verkligen", "säga", "sätt", "visar", "gäller", "undrar", "bör", "ändå", "all", "gång", "förstår", "kom", "gjort", "fick", "fått", "handlar", "sagt", "vissa", "både", "därför", "precis", "riktigt", "ännu", "väldigt", "hos", "samtidigt", "sitter", "menar", "komma", "låter", "låt", "hålla", "egen", "sak", "stå", "hej", "nästa"],
                    "fi": []}
     dist = Counter()
-    tag_map_size = len(tag_map)
     for tweet, tags in tag_map.iteritems():
-        for t in tags:
-            t = t.lower()
-            t = t.strip()
-            if len(t) > 0:
-                if lang in skip_tokens:
-                    if t not in skip_tokens[lang]:
+        if tags is not None:
+            for t in tags:
+                t = t.lower()
+                t = t.strip()
+                if len(t) > 0:
+                    if lang in skip_tokens:
+                        if t not in skip_tokens[lang]:
+                            dist[t] += 1
+                    else:
                         dist[t] += 1
-                else:
-                    dist[t] += 1
     print
     print("Total unique tags: " + str(len(dist)))
     return dist
