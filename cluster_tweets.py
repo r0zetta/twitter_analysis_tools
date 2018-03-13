@@ -113,7 +113,7 @@ def cluster(tag_map, tweets, lang="en"):
         for word, count in dist.most_common(200):
             f.write(unicode(count) + "\t" + word + u"\n")
 
-    min_hits = 5
+    min_hits = 2
     index = 0
     num_features = 0
     for x, c in dist.most_common():
@@ -140,7 +140,7 @@ def cluster(tag_map, tweets, lang="en"):
     vectors = np.array(vectorize_list(tag_map, common_vocab, tweets))
 
     pca_k = 2
-    num_k = 130
+    num_k = 60
     rand_seed = 9
     clusters, model, pca = make_clusters(vectors, tweets, pca_k, num_k, rand_seed)
     cluster_lengths = []
