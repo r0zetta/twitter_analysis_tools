@@ -194,10 +194,14 @@ def get_image_urls(status):
     return ret
 
 def get_text(status):
+    text = ""
     if "full_text" in status:
-        return status["full_text"]
+        text = status["full_text"]
     if "text" in status:
-        return status["text"]
+        text = status["text"]
+    text = text.strip()
+    text = re.sub("\n", " ", text)
+    return text
 
 def is_egg(status):
     if "user" in status:
@@ -211,12 +215,18 @@ def is_egg(status):
     return True
 
 def get_account_age_days(status):
-    ret = 0
+    created_at = get_user_created_at(status)
+    return seconds_to_days(seconds_since_twitter_time(created_at))
+
+def get_user_created_at(status):
     if "user" in status:
         user = status["user"]
-        created_at = user["created_at"]
-        ret = seconds_to_days(seconds_since_twitter_time(created_at))
-    return ret
+        if "created_at" in user:
+            return user["created_at"]
+
+def get_tweet_created_at(status):
+    if "created_at" in status:
+        return status["created_at"]
 
 def get_tweet_count(status):
     ret = 0
@@ -246,6 +256,10 @@ def get_profile_image_url(status):
         user = status["user"]
         if "profile_image_url" in user:
             return user["profile_image_url"]
+
+def get_tweet_id(status):
+    if "id_str" in status:
+        return status["id_str"]
 
 def get_user_id(status):
     if "user" in status:

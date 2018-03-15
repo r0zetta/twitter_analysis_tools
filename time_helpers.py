@@ -70,16 +70,17 @@ def unix_time_to_readable(time_string):
     return datetime.fromtimestamp(int(time_string)).strftime('%Y-%m-%d %H:%M:%S')
 
 def get_datestring(data_type=None, offset=0):
+    time_here = datetime.utcnow() - timedelta(hours = offset)
     if data_type is "hour":
-        time_here = datetime.utcnow() - timedelta(hours = offset)
         ymd = time_here.strftime("%Y%m%d")
         hour = int(time_here.strftime("%H"))
         hour_string = "%02d" % hour
         return ymd + hour_string
-    else:
-        time_here = datetime.utcnow() - timedelta(days = offset)
-        ymd = time_here.strftime("%Y%m%d")
-        return ymd
+    elif data_type is "day":
+        return time_here.strftime("%Y%m%d")
+    elif data_type is "month":
+        return time_here.strftime("%Y%m")
+
 
 def create_heatmap(timestamps):
     heatmap = [[0 for j in range(24)] for i in range(7)]

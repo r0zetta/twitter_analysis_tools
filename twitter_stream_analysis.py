@@ -499,20 +499,19 @@ def serialize():
     save_bin(data, filename)
 
 # These get dumped when we exit
-    if stopping == True:
-        print("Script stopping. Performing extended serialization.")
-        filename = "data/raw/conf.json"
-        save_json(conf, filename)
+    print("Script stopping. Performing extended serialization.")
+    filename = "data/raw/conf.json"
+    save_json(conf, filename)
 
-        raw = ["interarrivals", "tag_map", "who_tweeted_what", "user_user_map", "user_hashtag_map", "user_cluster_map"]
-        for n in raw:
-            if n in data:
-                filename = "data/raw/" + n + ".json"
-                save_json(data[n], filename)
+    raw = ["interarrivals", "tag_map", "who_tweeted_what", "user_user_map", "user_hashtag_map", "user_cluster_map"]
+    for n in raw:
+        if n in data:
+            filename = "data/raw/" + n + ".json"
+            save_json(data[n], filename)
 
-        jsons = ["all_users", "all_hashtags", "influencers", "amplifiers", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters", "suspiciousness_scores"]
-        for n in jsons:
-            save_output(n, "json")
+    jsons = ["all_users", "all_hashtags", "influencers", "amplifiers", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters", "suspiciousness_scores"]
+    for n in jsons:
+        save_output(n, "json")
     return
 
 def dump_data():
@@ -820,7 +819,7 @@ def process_tweet(status):
                 record_freq_dist_map("hashtag_cluster_map", cluster, h, False)
         if screen_name.lower() not in [x.lower() for x in ignore_list]:
             for h in hashtags:
-                record_freq_dist_map("user_hashtag_map", screen_name, h, False)
+                record_freq_dist_map("user_hashtag_map", screen_name.lower(), h.lower(), False)
         if matched == True:
             record_list("hashtag_matches", screen_name)
             if cluster is not None:
@@ -862,7 +861,7 @@ def process_tweet(status):
         if screen_name.lower() not in [x.lower() for x in ignore_list]:
             for n in interactions:
                 if n.lower() not in [x.lower() for x in ignore_list]:
-                    record_freq_dist_map("user_user_map", screen_name, n, False)
+                    record_freq_dist_map("user_user_map", screen_name.lower(), n.lower(), False)
                 matched_bad = False
                 matched_susp = False
                 if screen_name.lower() not in [x.lower() for x in good_users]:
@@ -1019,22 +1018,23 @@ if __name__ == '__main__':
 
 # Deserialize from previous run
     data = {}
-    filename = "data/raw/serialized.bin"
-    if os.path.exists(filename):
-        print("Attempting to deserialize from " + filename)
-        old_data = load_bin(filename)
-        if old_data is not None:
-            data = old_data
-        else:
-            tmp_file = "data/raw/serialized.bak"
-            if os.path.exists(tmp_file):
-                print("Serialized data was corrupted. Using backup file from " + tmp_file)
-                tmp_data = load_bin(tmp_file)
-                if tmp_data is None:
-                    print("Backup file was also corrupted. Deserialization failed.")
-                    sys.exit(0)
-                else:
-                    data = tmp_data
+    if search == False:
+        filename = "data/raw/serialized.bin"
+        if os.path.exists(filename):
+            print("Attempting to deserialize from " + filename)
+            old_data = load_bin(filename)
+            if old_data is not None:
+                data = old_data
+            else:
+                tmp_file = "data/raw/serialized.bak"
+                if os.path.exists(tmp_file):
+                    print("Serialized data was corrupted. Using backup file from " + tmp_file)
+                    tmp_data = load_bin(tmp_file)
+                    if tmp_data is None:
+                        print("Backup file was also corrupted. Deserialization failed.")
+                        sys.exit(0)
+                    else:
+                        data = tmp_data
 
     tweet_day_label = ""
     tweet_hour_label = ""
