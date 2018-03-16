@@ -81,6 +81,8 @@ def make_graph(interactions, vocab):
 def make_clusters(g, mode="multilevel"):
     print("Using " + mode + " to find communities.")
 # Fast
+    # This one is used by gephi
+    # g.modularity should give modularity
     if "multilevel" in mode:
         return g.community_multilevel()
     if "label_propagation" in mode:

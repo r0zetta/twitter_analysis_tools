@@ -76,6 +76,8 @@ def get_datestring(data_type=None, offset=0):
         hour = int(time_here.strftime("%H"))
         hour_string = "%02d" % hour
         return ymd + hour_string
+    elif data_type is "week":
+        return time_here.strftime("%Y%m%U")
     elif data_type is "day":
         return time_here.strftime("%Y%m%d")
     elif data_type is "month":

@@ -1,6 +1,17 @@
 import pygal
 import os
 
+def dump_horizontal_bar_chart(dirname, filename, title, x_labels, chart_data):
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    filepath = os.path.join(dirname, filename)
+    chart = pygal.HorizontalBar(show_y_guides=True)
+    chart.title = title
+    chart.x_labels = x_labels
+    for name, stuff in chart_data.iteritems():
+        chart.add(name, stuff)
+    chart.render_to_file(filepath)
+
 def dump_bar_chart(dirname, filename, title, x_labels, chart_data):
     if not os.path.exists(dirname):
         os.makedirs(dirname)
