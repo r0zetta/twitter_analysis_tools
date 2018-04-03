@@ -80,15 +80,15 @@ def save_output(name, filetype):
     suffix = ""
     if "json" in filetype:
         output_fn = save_json
-        prefix = "data/json/"
+        prefix = os.path.join(save_dir, "json/")
         suffix = ".json"
     elif "csv" in filetype:
         output_fn = save_counter_csv
-        prefix = "data/"
+        prefix = os.path.join(save_dir, "")
         suffix = ".csv"
     elif "gephi" in filetype:
         output_fn = save_gephi_csv
-        prefix = "data/"
+        prefix = os.path.join(save_dir, "")
         suffix = ".csv"
 
     if name in data:
@@ -123,6 +123,7 @@ def cleanup():
         print "Waiting for queue to empty..."
         stopping = True
         tweet_queue.join()
+    time.sleep(2)
     tweet_file_handle.close()
     tweet_url_file_handle.close()
     dump_file_handle.close()
@@ -383,7 +384,7 @@ def dump_tweet_volume_graphs():
                 volumes.append(item[1])
             chart_data = {}
             chart_data["tweets/sec"] = volumes
-            dirname = "data/"
+            dirname = os.path.join(save_dir, "")
             filename = "_tweet_volumes_" + l + ".svg"
             title = "Tweet Volumes (" + l + ")"
             dump_line_chart(dirname, filename, title, dates, chart_data)
@@ -400,7 +401,7 @@ def dump_languages_graphs():
                 if m is not None:
                     item = m.group(1)
                     chart_data[item] = value
-            dirname = "data/"
+            dirname = os.path.join(save_dir, "")
             filename = "_" + p + "_lang_breakdown.svg"
             title = "Language breakdown"
             dump_pie_chart(dirname, filename, title, chart_data)
@@ -411,10 +412,10 @@ def create_overall_graphs(name):
         dataset = dict(data[name].most_common(20))
         if len(dataset) > 0:
             title = name
-            dirname = "data/graphs/overall/" + name + "/pie/"
+            dirname = os.path.join(save_dir, "graphs/overall/" + name + "/pie/")
             filename = name + ".svg"
             dump_pie_chart(dirname, filename, title, dataset)
-            dirname = "data/graphs/overall/" + name + "/bar/"
+            dirname = os.path.join(save_dir, "graphs/overall/" + name + "/bar/")
             x_labels = []
             dump_bar_chart(dirname, filename, title, x_labels, dataset)
 
@@ -428,7 +429,7 @@ def create_periodic_graphs(name):
             if name in data[file_label]:
                 dataset = dict(data[file_label][name].most_common(15))
                 if len(dataset) > 0:
-                    dirname = "data/graphs/" + y + "/" + name + "/pie/"
+                    dirname = os.path.join(save_dir, "graphs/" + y + "/" + name + "/pie/")
                     filename = name + "_" + file_label + ".svg"
                     dump_pie_chart(dirname, filename, title, dataset)
 
@@ -458,7 +459,7 @@ def create_periodic_graphs(name):
                         else:
                             chart_data[item].append(0)
 
-        dirname = "data/graphs/" + y + "/" + name + "/bar/"
+        dirname = os.path.join(save_dir, "graphs/" + y + "/" + name + "/bar/")
         filename = name + "_" + file_label + ".svg"
         #x_labels = list(reversed(x_labels))
         dump_bar_chart(dirname, filename, title, x_labels, chart_data)
@@ -484,7 +485,7 @@ def dump_counters():
             else:
                 val = c
                 val_output += unicode(val) + u"\t" + unicode(n) + u"\n"
-    handle = io.open("data/_counters.txt", "w", encoding='utf-8')
+    handle = io.open(os.path.join(save_dir, "_counters.txt"), "w", encoding='utf-8')
     handle.write(unicode(val_output))
     handle.write(u"\n")
     handle.write(unicode(date_output))
@@ -492,21 +493,21 @@ def dump_counters():
 
 def serialize():
     debug_print(sys._getframe().f_code.co_name)
-    filename = "data/raw/serialized.bin"
+    filename = os.path.join(save_dir, "raw/serialized.bin")
     if os.path.exists(filename):
-        tmp_file = "data/raw/serialized.bak"
+        tmp_file = os.path.join(save_dir, "raw/serialized.bak")
         os.rename(filename, tmp_file)
     save_bin(data, filename)
 
 # These get dumped when we exit
     print("Script stopping. Performing extended serialization.")
-    filename = "data/raw/conf.json"
+    filename = os.path.join(save_dir, "raw/conf.json")
     save_json(conf, filename)
 
     raw = ["interarrivals", "tag_map", "who_tweeted_what", "user_user_map", "user_hashtag_map", "user_cluster_map"]
     for n in raw:
         if n in data:
-            filename = "data/raw/" + n + ".json"
+            filename = os.path.join(save_dir, "raw/" + n + ".json")
             save_json(data[n], filename)
 
     jsons = ["all_users", "all_hashtags", "influencers", "amplifiers", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters", "suspiciousness_scores"]
@@ -528,13 +529,13 @@ def dump_data():
     for n in gephis:
         save_output(n, "gephi")
 
-    filename = "data/custom/most_suspicious.csv"
+    filename = os.path.join(save_dir, "custom/most_suspicious.csv")
     save_counter_csv(data["suspiciousness_scores"], filename)
 
     custom = ["description_matches", "keyword_matches", "hashtag_matches", "url_matches", "interarrival_matches", "interacted_with_bad", "interacted_with_suspicious", "suspicious_users", "interesting_clusters_user", "interesting_clusters_hashtag", "interesting_clusters_keyword", "interesting_clusters_url", "high_frequency"]
     for n in custom:
         if n in data:
-            filename = "data/custom/" + n + ".json"
+            filename = os.path.join(save_dir, "custom/" + n + ".json")
             save_json(data[n], filename)
     return
 
@@ -639,7 +640,7 @@ def dump_event():
 
 # Reload config
         load_settings()
-        filename = "data/raw/conf.json"
+        filename = os.path.join(save_dir, "raw/conf.json")
         save_json(conf, filename)
 
 # Update timestamp labels and delete old data
@@ -992,6 +993,7 @@ def get_tweet_stream(query):
 #########################################
 if __name__ == '__main__':
     follow = False
+    save_dir = "data"
     input_params = []
     if len(sys.argv) > 1:
         for s in sys.argv[1:]:
@@ -1004,14 +1006,31 @@ if __name__ == '__main__':
             else:
                 input_params.append(s)
 
+    if search == True:
+        unixtime = get_utc_unix_time()
+        save_dir = os.path.join("captures/searches", str(int(unixtime)))
     if search == True and follow == True:
         print("Only one of search and follow params can be supplied")
         sys.exit(0)
 
-    directories = ["data", "data/custom", "data/raw", "data/json", "data/json/overall", "data/json/daily", "data/json/hourly", "data/graphs", "data/graphs/overall", "data/graphs/daily", "data/graphs/hourly", "data/hourly", "data/daily", "data/overall"]
-    for dir in directories:
-        if not os.path.exists(dir):
-            os.makedirs(dir)
+    directories = ["",
+                   "custom",
+                   "raw",
+                   "json",
+                   "json/overall",
+                   "json/daily",
+                   "json/hourly",
+                   "graphs",
+                   "graphs/overall",
+                   "graphs/daily",
+                   "graphs/hourly",
+                   "hourly",
+                   "daily",
+                   "overall"]
+    for d in directories:
+        dirname = os.path.join(save_dir, d)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
 
     if os.path.exists("config/stopwords.json"):
         stopwords = load_json("config/stopwords.json")
@@ -1019,14 +1038,14 @@ if __name__ == '__main__':
 # Deserialize from previous run
     data = {}
     if search == False:
-        filename = "data/raw/serialized.bin"
+        filename = os.path.join(save_dir, "raw/serialized.bin")
         if os.path.exists(filename):
             print("Attempting to deserialize from " + filename)
             old_data = load_bin(filename)
             if old_data is not None:
                 data = old_data
             else:
-                tmp_file = "data/raw/serialized.bak"
+                tmp_file = os.path.join(save_dir, "raw/serialized.bak")
                 if os.path.exists(tmp_file):
                     print("Serialized data was corrupted. Using backup file from " + tmp_file)
                     tmp_data = load_bin(tmp_file)
@@ -1055,10 +1074,10 @@ if __name__ == '__main__':
     set_counter("previous_serialize", int(time.time()))
     set_counter("previous_config_reload", int(time.time()))
 
-    tweet_file_handle = io.open("data/raw/tweets.txt", "a", encoding="utf-8")
-    tweet_url_file_handle = io.open("data/raw/tweet_urls.txt", "a", encoding="utf-8")
-    dump_file_handle = io.open("data/raw/raw.json", "a", encoding="utf-8")
-    volume_file_handle = open("data/raw/tweet_volumes.txt", "a")
+    tweet_file_handle = io.open(os.path.join(save_dir, "raw/tweets.txt"), "a", encoding="utf-8")
+    tweet_url_file_handle = io.open(os.path.join(save_dir, "raw/tweet_urls.txt"), "a", encoding="utf-8")
+    dump_file_handle = io.open(os.path.join(save_dir, "raw/raw.json"), "a", encoding="utf-8")
+    volume_file_handle = open(os.path.join(save_dir, "raw/tweet_volumes.txt"), "a")
 
 # Init spacy and stemmer
     print("Languages: " + ", ".join(conf["languages"]))
@@ -1167,7 +1186,7 @@ if __name__ == '__main__':
 # Start stream
     script_start_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
     conf["first_started"] = script_start_time_str
-    filename = "data/raw/conf.json"
+    filename = os.path.join(save_dir, "raw/conf.json")
     save_json(conf, filename)
     if search == True:
         set_counter("successful_loops", 0)
