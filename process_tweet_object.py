@@ -114,7 +114,7 @@ def get_quoted(status):
                     if user["screen_name"] is not None:
                             return user["screen_name"]
 
-def get_retweeted(status):
+def get_retweeted_user(status):
     if "retweeted_status" in status:
         orig_tweet = status["retweeted_status"]
         if "user" in orig_tweet:
@@ -123,6 +123,11 @@ def get_retweeted(status):
                 if "screen_name" in user:
                     if user["screen_name"] is not None:
                         return user["screen_name"]
+
+def get_retweeted_status(status):
+    if "retweeted_status" in status:
+        orig_tweet = status["retweeted_status"]
+        return get_text(orig_tweet)
 
 def get_replied(status):
     if "in_reply_to_screen_name" in status:
@@ -141,7 +146,7 @@ def get_interactions(status):
     quoted = get_quoted(status)
     if quoted is not None:
         interactions.add(quoted)
-    retweeted = get_retweeted(status)
+    retweeted = get_retweeted_user(status)
     if retweeted is not None:
         interactions.add(retweeted)
     replied = get_replied(status)
@@ -260,6 +265,14 @@ def get_profile_image_url(status):
 def get_tweet_id(status):
     if "id_str" in status:
         return status["id_str"]
+
+def get_tweet_source(status):
+    if "source" in status and status["source"] is not None:
+        source_url = status["source"]
+        m = re.search("^\<.+\>(.+)\<\/a\>$", source_url)
+        if m is not None:
+            source = m.group(1)
+            return source
 
 def get_user_id(status):
     if "user" in status:

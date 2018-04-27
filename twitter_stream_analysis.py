@@ -504,7 +504,7 @@ def serialize():
     filename = os.path.join(save_dir, "raw/conf.json")
     save_json(conf, filename)
 
-    raw = ["interarrivals", "tag_map", "who_tweeted_what", "user_user_map", "user_hashtag_map", "user_cluster_map"]
+    raw = ["interarrivals", "tag_map", "who_tweeted_what", "who_retweeted_what", "user_user_map", "user_hashtag_map", "user_cluster_map", "sources"]
     for n in raw:
         if n in data:
             filename = os.path.join(save_dir, "raw/" + n + ".json")
@@ -710,6 +710,10 @@ def process_tweet(status):
     if is_egg(status):
         susp_score += 100
 
+    source = get_tweet_source(status)
+    if source is not None:
+        record_freq_dist_map("sources", screen_name, source, False)
+
     account_age_days = get_account_age_days(status)
     tweets_per_day = get_tweets_per_day(status)
     if tweets_per_day > 100:
@@ -794,6 +798,10 @@ def process_tweet(status):
     if cluster is not None:
         record_freq_dist("cluster_counts", cluster)
         record_freq_dist_map("user_cluster_map", cluster, screen_name, False)
+
+    retweeted_user = get_retweeted_user(status)
+    if retweeted_user is not None and preprocessed is not None:
+        record_map("who_retweeted_what", retweeted_user + " : " + preprocessed, screen_name, False)
 
 # Check text for keywords
     matched = False
@@ -1162,7 +1170,7 @@ if __name__ == '__main__':
         print "Preparing search"
         print "Query: " + query
     else:
-        conf["mode"] = "search"
+        conf["mode"] = "stream"
         print("Listening to Twitter search stream")
         targets = []
         if len(input_params) > 0:
