@@ -208,16 +208,113 @@ def get_text(status):
     text = re.sub("\n", " ", text)
     return text
 
+def user_is_egg(user):
+    if "default_profile" in user and user["default_profile"] is not None:
+        if user["default_profile"] == False:
+            return False
+    if "default_profile_image" in user and user["default_profile_image"] is not None:
+        if user["default_profile_image"] == False:
+            return False
+    return True
+
+def user_get_user_created_at(user):
+    if "created_at" in user:
+        return user["created_at"]
+
+def user_get_friends_count(user):
+    if "friends_count" in user:
+        return user["friends_count"]
+    return 0
+
+def user_get_followers_count(user):
+    if "followers_count" in user:
+        return user["followers_count"]
+    return 0
+
+def user_get_statuses_count(user):
+    if "statuses_count" in user:
+        return user["statuses_count"]
+    return 0
+
+def user_get_favourites_count(user):
+    if "favourites_count" in user:
+        return user["favourites_count"]
+    return 0
+
+def user_get_name(user):
+    if "name" in user:
+        return user["name"]
+
+def user_get_screen_name(user):
+    if "screen_name" in user:
+        return user["screen_name"]
+
+def user_get_id_str(user):
+    if "id_str" in user:
+        return user["id_str"]
+
+def user_get_location(user):
+    if "location" in user:
+        return user["location"]
+
+def user_get_description(user):
+    if "description" in user:
+        return user["description"]
+
+def user_get_verified(user):
+    if "verified" in user:
+        return user["verified"]
+
+def user_get_protected(user):
+    if "protected" in user:
+        return user["protected"]
+
+def get_user_details_dict(user):
+    details = {}
+    detail_fields = ["id_str",
+                     "screen_name",
+                     "name",
+                     "created_at",
+                     "location",
+                     "description",
+                     "verified",
+                     "protected",
+                     "friends_count",
+                     "followers_count",
+                     "statuses_count",
+                     "favourites_count"]
+    for d in detail_fields:
+        if d in user:
+            details[d] = user[d]
+        else:
+            details[d] = "Unknown"
+    return details
+
+def get_user_details_list(user):
+    details = []
+    detail_fields = ["id_str",
+                     "screen_name",
+                     "name",
+                     "created_at",
+                     "location",
+                     "description",
+                     "verified",
+                     "protected",
+                     "friends_count",
+                     "followers_count",
+                     "statuses_count",
+                     "favourites_count"]
+    for d in detail_fields:
+        if d in user:
+            details.append(user[d])
+        else:
+            details.append("Unknown")
+    return details
+
 def is_egg(status):
     if "user" in status:
         user = status["user"]
-        if "default_profile" in user and user["default_profile"] is not None:
-            if user["default_profile"] == False:
-                return False
-        if "default_profile_image" in user and user["default_profile_image"] is not None:
-            if user["default_profile_image"] == False:
-                return False
-    return True
+        return user_is_egg(user)
 
 def get_account_age_days(status):
     created_at = get_user_created_at(status)
@@ -226,8 +323,7 @@ def get_account_age_days(status):
 def get_user_created_at(status):
     if "user" in status:
         user = status["user"]
-        if "created_at" in user:
-            return user["created_at"]
+        return user_get_user_created_at(user)
 
 def get_tweet_created_at(status):
     if "created_at" in status:
@@ -249,12 +345,9 @@ def get_tweets_per_day(status):
     return ret
 
 def get_friends_count(status):
-    ret = 0
     if "user" in status:
         user = status["user"]
-        if "friends_count" in user:
-            ret = user["friends_count"]
-    return ret
+        return user_get_friends_count(user)
 
 def get_profile_image_url(status):
     if "user" in status:
@@ -277,16 +370,12 @@ def get_tweet_source(status):
 def get_user_id(status):
     if "user" in status:
         user = status["user"]
-        if "id_str" in user:
-            return user["id_str"]
+        return user_get_id_str(user)
 
 def get_followers_count(status):
-    ret = 0
     if "user" in status:
         user = status["user"]
-        if "followers_count" in user:
-            ret = user["followers_count"]
-    return ret
+        return user_get_followers_count(user)
 
 def is_new_account_bot(status):
     ret = False

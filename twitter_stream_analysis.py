@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 from authentication_keys import get_account_credentials
 from time_helpers import *
 from process_tweet_object import *
@@ -60,20 +62,22 @@ def debug_print(string):
         print string
 
 def write_daily_data(name, output_fn, prefix, suffix, label):
-    if name in data[day_label]:
-        dirname = prefix + "daily/" + name
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
-        filename = prefix + "daily/" + name + "/" + name + "_" + day_label + suffix
-        output_fn(data[day_label][name], filename)
+    if day_label in data:
+        if name in data[day_label]:
+            dirname = prefix + "daily/" + name
+            if not os.path.exists(dirname):
+                os.makedirs(dirname)
+            filename = prefix + "daily/" + name + "/" + name + "_" + day_label + suffix
+            output_fn(data[day_label][name], filename)
 
 def write_hourly_data(name, output_fn, prefix, suffix, label):
-    if name in data[hour_label]:
-        dirname = prefix + "hourly/" + name
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
-        filename = prefix + "hourly/" + name + "/" + name + "_" + hour_label + suffix
-        output_fn(data[hour_label][name], filename)
+    if hour_label in data:
+        if name in data[hour_label]:
+            dirname = prefix + "hourly/" + name
+            if not os.path.exists(dirname):
+                os.makedirs(dirname)
+            filename = prefix + "hourly/" + name + "/" + name + "_" + hour_label + suffix
+            output_fn(data[hour_label][name], filename)
 
 def save_output(name, filetype):
     output_fn = None
@@ -184,6 +188,16 @@ def get_all_counters():
     debug_print(sys._getframe().f_code.co_name)
     if "counters" in data:
         return data["counters"]
+
+def record_user_details(user):
+    debug_print(sys._getframe().f_code.co_name)
+    global data
+    if "user_details" not in data:
+        data["user_details"] = {}
+    id_str = user_get_id_str(user)
+    if id_str is not None and len(id_str) > 0:
+        user_data = get_user_details_dict(user)
+        data["user_details"][id_str] = user_data
 
 def record_list(label, item):
     debug_print(sys._getframe().f_code.co_name)
@@ -408,6 +422,8 @@ def dump_languages_graphs():
 
 def create_overall_graphs(name):
     debug_print(sys._getframe().f_code.co_name)
+    if name is None:
+        return
     if name in data:
         dataset = dict(data[name].most_common(20))
         if len(dataset) > 0:
@@ -421,6 +437,8 @@ def create_overall_graphs(name):
 
 def create_periodic_graphs(name):
     debug_print(sys._getframe().f_code.co_name)
+    if name is None:
+        return
     for x, y in {"hour": "hourly", "day": "daily"}.iteritems():
         file_label = get_datestring(x)
         title = name + " " + file_label
@@ -468,6 +486,46 @@ def create_periodic_graphs(name):
 # Periodically dump data
 ########################
 
+def dump_user_details():
+    debug_print(sys._getframe().f_code.co_name)
+    global data
+
+    if "user_details" not in data:
+        return
+    if data["user_details"] is None or len(data["user_details"]) < 1:
+        return
+
+    detail_fields = ["id_str",
+                     "screen_name",
+                     "name",
+                     "created_at",
+                     #"location",
+                     #"description",
+                     "verified",
+                     "protected",
+                     "friends_count",
+                     "followers_count",
+                     "statuses_count",
+                     "favourites_count"]
+
+    details = data["user_details"]
+    filename = os.path.join(save_dir, "overall", "user_details.csv")
+    with io.open(filename, "w", encoding="utf-8") as f:
+        f.write(u",".join(detail_fields)+u"\n")
+        for id_str, user_entry in details.iteritems():
+            for detail in detail_fields:
+                if detail in user_entry:
+                    field = user_entry[detail]
+                    if isinstance(field, str) or isinstance(field, unicode):
+                        field.replace("\n", " ")
+                        field.replace(",", "")
+                        f.write(u"\"" + unicode(field) + u"\",")
+                    else:
+                        f.write(unicode(field) + u",")
+                else:
+                    f.write(u"unknown,")
+            f.write(u"\n")
+
 def dump_counters():
     debug_print(sys._getframe().f_code.co_name)
     counter_dump = get_all_counters()
@@ -500,7 +558,7 @@ def serialize():
     save_bin(data, filename)
 
 # These get dumped when we exit
-    print("Script stopping. Performing extended serialization.")
+    print("Performing extended serialization.")
     filename = os.path.join(save_dir, "raw/conf.json")
     save_json(conf, filename)
 
@@ -510,7 +568,7 @@ def serialize():
             filename = os.path.join(save_dir, "raw/" + n + ".json")
             save_json(data[n], filename)
 
-    jsons = ["all_users", "all_hashtags", "influencers", "amplifiers", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters", "suspiciousness_scores"]
+    jsons = ["all_users", "all_hashtags", "influencers", "amplifiers", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters", "suspiciousness_scores", "user_details"]
     for n in jsons:
         save_output(n, "json")
     return
@@ -537,6 +595,9 @@ def dump_data():
         if n in data:
             filename = os.path.join(save_dir, "custom/" + n + ".json")
             save_json(data[n], filename)
+
+    dump_user_details()
+
     return
 
 def dump_graphs():
@@ -707,6 +768,7 @@ def process_tweet(status):
     text = text.strip()
     text = re.sub("\n", " ", text)
 
+    record_user_details(user)
     if is_egg(status):
         susp_score += 100
 
@@ -1005,11 +1067,11 @@ if __name__ == '__main__':
     input_params = []
     if len(sys.argv) > 1:
         for s in sys.argv[1:]:
-            if "search" in s:
+            if s == "search":
                 search = True
-            elif "follow" in s:
+            elif s == "follow":
                 follow = True
-            elif "debug" in s:
+            elif s == "debug":
                 debug = True
             else:
                 input_params.append(s)
@@ -1171,7 +1233,7 @@ if __name__ == '__main__':
         print "Query: " + query
     else:
         conf["mode"] = "stream"
-        print("Listening to Twitter search stream")
+        print("Listening to Twitter search stream with targets:")
         targets = []
         if len(input_params) > 0:
             targets = input_params
@@ -1187,6 +1249,7 @@ if __name__ == '__main__':
                 print "Getting 1% sample."
             else:
                 print "Search: " + query
+        print targets
 
 # Start a thread to process incoming tweets
     start_thread()

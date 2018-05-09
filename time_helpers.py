@@ -69,20 +69,23 @@ def get_utc_unix_time():
 def unix_time_to_readable(time_string):
     return datetime.fromtimestamp(int(time_string)).strftime('%Y-%m-%d %H:%M:%S')
 
-def get_datestring(data_type=None, offset=0):
+def get_datestring(data_type, offset=0):
     time_here = datetime.utcnow() - timedelta(hours = offset)
-    if data_type is "hour":
+    if data_type == "hour":
         ymd = time_here.strftime("%Y%m%d")
         hour = int(time_here.strftime("%H"))
         hour_string = "%02d" % hour
         return ymd + hour_string
-    elif data_type is "week":
+    elif data_type == "week":
         return time_here.strftime("%Y%m%U")
-    elif data_type is "day":
+    elif data_type == "day":
         return time_here.strftime("%Y%m%d")
-    elif data_type is "month":
+    elif data_type == "month":
         return time_here.strftime("%Y%m")
 
+def datestring_to_unix(date_string):
+    date_object = datetime.strptime(date_string, "%Y%m%d")
+    return time_object_to_unix(date_object)
 
 def create_heatmap(timestamps):
     heatmap = [[0 for j in range(24)] for i in range(7)]

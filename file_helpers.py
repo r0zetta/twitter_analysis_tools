@@ -1,7 +1,22 @@
+# -*- coding: utf-8 -*-
+
+from __future__ import unicode_literals
 from six.moves import cPickle
 import os
 import json
 import io
+
+def get_subdirs(d="."):
+    return [os.path.join(d, o) for o in os.listdir(d) if os.path.isdir(os.path.join(d,o))]
+
+def get_file_list(directory):
+    ret = []
+    for root, dirs, files in os.walk(directory):
+        for f in files:
+            if f.endswith('.json'):
+                ret.append(f)
+    return ret
+
 
 def save_bin(item, filename):
     with open(filename, "wb") as f:
