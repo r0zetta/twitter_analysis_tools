@@ -18,6 +18,7 @@ from tweepy import OAuthHandler
 from tweepy import API
 from tweepy import Cursor
 import numpy as np
+import urllib
 import Queue
 import threading
 import sys
@@ -1228,6 +1229,7 @@ if __name__ == '__main__':
             print("Search can only handle one search term (for now).")
             sys.exit(0)
         query = searches[0]
+        query = urllib.quote_plus(query)
         conf["query"] = query
         print "Preparing search"
         print "Query: " + query
@@ -1242,7 +1244,10 @@ if __name__ == '__main__':
             conf["input"] = "config_file"
             targets = read_config("config/targets.txt")
         if len(targets) > 0:
-            query = ",".join(targets)
+            quoted = []
+            for t in targets:
+                quoted.append(urllib.quote_plus(t))
+            query = ",".join(quoted)
             conf["query"] = query
             print "Preparing stream"
             if query == "":

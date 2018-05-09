@@ -84,12 +84,6 @@ def is_bot_name(name):
         ret = False
     return ret
 
-def get_screen_name(status):
-    if "user" in status:
-        user_data = status["user"]
-        if "screen_name" in user_data:
-            return user_data["screen_name"]
-
 def get_mentioned(status):
     mentioned = []
     if "entities" in status:
@@ -329,12 +323,15 @@ def get_tweet_created_at(status):
     if "created_at" in status:
         return status["created_at"]
 
-def get_tweet_count(status):
-    ret = 0
+def get_screen_name(status):
     if "user" in status:
         user = status["user"]
-        ret = user["statuses_count"]
-    return ret
+        return user_get_screen_name(user)
+
+def get_tweet_count(status):
+    if "user" in status:
+        user = status["user"]
+        return user_get_statuses_count(user)
 
 def get_tweets_per_day(status):
     ret = 0
