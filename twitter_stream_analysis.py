@@ -18,7 +18,6 @@ from tweepy import OAuthHandler
 from tweepy import API
 from tweepy import Cursor
 import numpy as np
-import urllib
 import Queue
 import threading
 import sys
@@ -563,13 +562,13 @@ def serialize():
     filename = os.path.join(save_dir, "raw/conf.json")
     save_json(conf, filename)
 
-    raw = ["interarrivals", "tag_map", "who_tweeted_what", "who_retweeted_what", "user_user_map", "user_hashtag_map", "user_cluster_map", "sources"]
+    raw = ["interarrivals", "tag_map", "who_tweeted_what", "who_retweeted_what", "user_user_map", "user_hashtag_map", "user_cluster_map", "sources", "user_details"]
     for n in raw:
         if n in data:
             filename = os.path.join(save_dir, "raw/" + n + ".json")
             save_json(data[n], filename)
 
-    jsons = ["all_users", "all_hashtags", "influencers", "amplifiers", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters", "suspiciousness_scores", "user_details"]
+    jsons = ["all_users", "all_hashtags", "influencers", "amplifiers", "word_frequencies", "all_urls", "urls_not_twitter", "fake_news_urls", "fake_news_tweeters", "suspiciousness_scores"]
     for n in jsons:
         save_output(n, "json")
     return
@@ -588,8 +587,9 @@ def dump_data():
     for n in gephis:
         save_output(n, "gephi")
 
-    filename = os.path.join(save_dir, "custom/most_suspicious.csv")
-    save_counter_csv(data["suspiciousness_scores"], filename)
+    if "suspiciousness_scores" in data:
+        filename = os.path.join(save_dir, "custom/most_suspicious.csv")
+        save_counter_csv(data["suspiciousness_scores"], filename)
 
     custom = ["description_matches", "keyword_matches", "hashtag_matches", "url_matches", "interarrival_matches", "interacted_with_bad", "interacted_with_suspicious", "suspicious_users", "interesting_clusters_user", "interesting_clusters_hashtag", "interesting_clusters_keyword", "interesting_clusters_url", "high_frequency"]
     for n in custom:
@@ -1229,7 +1229,6 @@ if __name__ == '__main__':
             print("Search can only handle one search term (for now).")
             sys.exit(0)
         query = searches[0]
-        query = urllib.quote_plus(query)
         conf["query"] = query
         print "Preparing search"
         print "Query: " + query
@@ -1244,10 +1243,7 @@ if __name__ == '__main__':
             conf["input"] = "config_file"
             targets = read_config("config/targets.txt")
         if len(targets) > 0:
-            quoted = []
-            for t in targets:
-                quoted.append(urllib.quote_plus(t))
-            query = ",".join(quoted)
+            query = ",".join(targets)
             conf["query"] = query
             print "Preparing stream"
             if query == "":
