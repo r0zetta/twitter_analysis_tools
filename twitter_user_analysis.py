@@ -96,16 +96,16 @@ def record_chronology(label, tweet_time):
             data[l][timestamps[t]] += 1
 
 def dump_images(image_urls, dirname):
-        for p in image_urls:
-            m = re.search("^http:\/\/pbs\.twimg\.com\/media\/(.+)$", p)
-            if m is not None:
-                filename = m.group(1)
-                print("Getting picture from: " + p)
-                save_path = os.path.join(dirname, filename)
-                response = requests.get(p, stream=True)
-                with open(save_path, 'wb') as out_file:
-                    shutil.copyfileobj(response.raw, out_file)
-                del response
+    for p in image_urls:
+        m = re.search("^http:\/\/pbs\.twimg\.com\/media\/(.+)$", p)
+        if m is not None:
+            filename = m.group(1)
+            print("Getting picture from: " + p)
+            save_path = os.path.join(dirname, filename)
+            response = requests.get(p, stream=True)
+            with open(save_path, 'wb') as out_file:
+                shutil.copyfileobj(response.raw, out_file)
+            del response
 
 # Creates one week length ranges and finds items that fit into those range boundaries
 def make_ranges(user_data, num_ranges=20):
@@ -265,8 +265,8 @@ if __name__ == '__main__':
                         data["interacted"][n] += 1
                         data["interactions"][data["screen_name"]][n] += 1
             own_tweet = True
-            if get_retweeted(status) is not None:
-                data["retweeted"][get_retweeted(status)] += 1
+            if get_retweeted_status(status) is not None:
+                data["retweeted"][get_retweeted_status(status)] += 1
                 data["retweet_count"] += 1
                 own_tweet = False
             if get_quoted(status) is not None:
