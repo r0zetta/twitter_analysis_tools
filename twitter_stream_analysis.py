@@ -486,46 +486,6 @@ def create_periodic_graphs(name):
 # Periodically dump data
 ########################
 
-def dump_user_details():
-    debug_print(sys._getframe().f_code.co_name)
-    global data
-
-    if "user_details" not in data:
-        return
-    if data["user_details"] is None or len(data["user_details"]) < 1:
-        return
-
-    detail_fields = ["id_str",
-                     "screen_name",
-                     "name",
-                     "created_at",
-                     #"location",
-                     #"description",
-                     "verified",
-                     "protected",
-                     "friends_count",
-                     "followers_count",
-                     "statuses_count",
-                     "favourites_count"]
-
-    details = data["user_details"]
-    filename = os.path.join(save_dir, "overall", "user_details.csv")
-    with io.open(filename, "w", encoding="utf-8") as f:
-        f.write(u",".join(detail_fields)+u"\n")
-        for id_str, user_entry in details.iteritems():
-            for detail in detail_fields:
-                if detail in user_entry:
-                    field = user_entry[detail]
-                    if isinstance(field, str) or isinstance(field, unicode):
-                        field.replace("\n", " ")
-                        field.replace(",", "")
-                        f.write(u"\"" + unicode(field) + u"\",")
-                    else:
-                        f.write(unicode(field) + u",")
-                else:
-                    f.write(u"unknown,")
-            f.write(u"\n")
-
 def dump_counters():
     debug_print(sys._getframe().f_code.co_name)
     counter_dump = get_all_counters()
@@ -596,8 +556,6 @@ def dump_data():
         if n in data:
             filename = os.path.join(save_dir, "custom/" + n + ".json")
             save_json(data[n], filename)
-
-    dump_user_details()
 
     return
 
