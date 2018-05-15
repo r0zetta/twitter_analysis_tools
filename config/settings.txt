@@ -1,4 +1,5 @@
 log_per_hour_data = 1
-dump_raw_data = 0
+dump_raw_data = 1
 dump_graphs = 1
 record_all_tweets = 1
+write_jsons = 1
