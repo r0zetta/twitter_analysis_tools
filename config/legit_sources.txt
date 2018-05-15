@@ -23,3 +23,27 @@ Hootsuite
 Instagram
 Twitterrific
 Favstar.FM
+The Social Jukebox
+Social Oomph
+Bot Libre!
+Statusbrew
+RoundTeam
+IFTTT
+TweetDeck
+dlvr.it
+Gab
+Commun.it
+Dabr.eu - latest @ Dabr build
+UberSocial
+Talon (Plus)
+Paper.li
+console-tweet (seejohnrun.github/console_tweet)
+Sociocaster App
+Turpial
+Tweetsmap
+Meet Edgar
+Crowdfire - Go Big
+Cheap Bots Done Quick!
+tweechaPrime
+twittbot.net
+
