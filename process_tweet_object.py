@@ -2,88 +2,6 @@ from time_helpers import *
 from alphabet_detector import AlphabetDetector
 import re
 
-def is_bot_name(name):
-    ret = True
-    if re.search("^([A-Z]?[a-z]{1,})?[\_]?([A-Z]?[a-z]{1,})?[\_]?[0-9]{,9}$", name):
-        ret = False
-    if re.search("^[\_]{,3}[A-Z]{2,}[\_]{,3}$", name):
-        ret = False
-    if re.search("^[A-Z]{2}[a-z]{2,}$", name):
-        ret = False
-    if re.search("^([A-Z][a-z]{1,}){3}[0-9]?$", name):
-        ret = False
-    if re.search("^[A-Z]{1,}[a-z]{1,}[A-Z]{1,}$", name):
-        ret = False
-    if re.search("^[A-Z]{1,}[a-z]{1,}$", name):
-        ret = False
-    if re.search("^([A-Z]?[a-z]{1,}[\_]{1,}){1,}[A-Z]?[a-z]{1,}$", name):
-        ret = False
-    if re.search("^[A-Z]{1,}[a-z]{1,}[\_][A-Z][\_][A-Z]{1,}[a-z]{1,}$", name):
-        ret = False
-    if re.search("^[a-z]{1,}[A-Z][a-z]{1,}[A-Z][a-z]{1,}$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{1,}[A-Z][a-z]{1,}[A-Z]{1,}$", name):
-        ret = False
-    if re.search("^([A-Z][\_]){1,}[A-Z][a-z]{1,}$", name):
-        ret = False
-    if re.search("^[\_][A-Z][a-z]{1,}[\_][A-Z][a-z]{1,}[\_]?$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{1,}[\_][A-Z][\_][A-Z]$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{2,}[0-9][A-Z][a-z]{2,}$", name):
-        ret = False
-    if re.search("^[A-Z]{1,}[0-9]?$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{1,}[\_][A-Z]$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{1,}[A-Z]{2}[a-z]{1,}$", name):
-        ret = False
-    if re.search("^[\_]{1,}[a-z]{2,}[\_]{1,}$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{2,}[\_][A-Z][a-z]{2,}[\_][A-Z]$", name):
-        ret = False
-    if re.search("^[A-Z]?[a-z]{2,}[0-9]{2}[\_]?[A-Z]?[a-z]{2,}$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{2,}[A-Z]{1,}[0-9]{,2}$", name):
-        ret = False
-    if re.search("^[\_][A-Z][a-z]{2,}[A-Z][a-z]{2,}[\_]$", name):
-        ret = False
-    if re.search("^([A-Z][a-z]{1,}){2,}$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{2,}[\_][A-Z]{2}$", name):
-        ret = False
-    if re.search("^[a-z]{3,}[0-9][a-z]{3,}$", name):
-        ret = False
-    if re.search("^[a-z]{4,}[A-Z]{1,}$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{3,}[A-Z][0-9]{,9}$", name):
-        ret = False
-    if re.search("^[A-Z]{2,}[\_][A-Z][a-z]{3,}$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{3,}[A-Z]{1,3}[a-z]{3,}$", name):
-        ret = False
-    if re.search("^[A-Z]{3,}[a-z]{3,}[0-9]?$", name):
-        ret = False
-    if re.search("^[A-Z]?[a-z]{3,}[\_]+$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{3,}[\_][a-z]{3,}[\_][A-Za-z]{1,}$", name):
-        ret = False
-    if re.search("^[A-Z]{2,}[a-z]{3,}[A-Z][a-z]{3,}$", name):
-        ret = False
-    if re.search("^[A-Z][a-z]{2,}[A-Z][a-z]{3,}[\_]?[A-Z]{1,}$", name):
-        ret = False
-    if re.search("^[A-Z]{4,}[0-9]{2,9}$", name):
-        ret = False
-    if re.search("^[A-Z]{1,2}[a-z]{3,}[A-Z]{1,2}[a-z]{3,}[0-9]{1,9}$", name):
-        ret = False
-    if re.search("^[A-Z]+[a-z]{3,}[0-9]{1,9}$", name):
-        ret = False
-    if re.search("^([A-Z]?[a-z]{2,})+[0-9]{1,9}$", name):
-        ret = False
-    if re.search("^([A-Z]?[a-z]{2,})+\_?[a-z]+$", name):
-        ret = False
-    return ret
-
 def get_mentioned(status):
     mentioned = []
     if "entities" in status:
@@ -111,17 +29,27 @@ def get_quoted(status):
 def get_retweeted_user(status):
     if "retweeted_status" in status:
         orig_tweet = status["retweeted_status"]
-        if "user" in orig_tweet:
-            if orig_tweet["user"] is not None:
-                user = orig_tweet["user"]
-                if "screen_name" in user:
-                    if user["screen_name"] is not None:
-                        return user["screen_name"]
+        return get_screen_name(orig_tweet)
+
+def get_retweeted_tweet_id(status):
+    if "retweeted_status" in status:
+        orig_tweet = status["retweeted_status"]
+        return get_tweet_id(orig_tweet)
 
 def get_retweeted_status(status):
     if "retweeted_status" in status:
         orig_tweet = status["retweeted_status"]
         return get_text(orig_tweet)
+
+def get_retweeted_tweet_url(status):
+    if "retweeted_status" in status:
+        orig_tweet = status["retweeted_status"]
+        screen_name = get_screen_name(orig_tweet)
+        tweet_id = get_tweet_id(orig_tweet)
+        if screen_name is not None and tweet_id is not None:
+            url = "https://twitter.com/"+screen_name+"/status/"+tweet_id
+            return url
+
 
 def get_replied(status):
     if "in_reply_to_screen_name" in status:
@@ -436,3 +364,86 @@ def is_new_account_bot(status):
         return True
     else:
         return False
+
+def is_bot_name(name):
+    ret = True
+    if re.search("^([A-Z]?[a-z]{1,})?[\_]?([A-Z]?[a-z]{1,})?[\_]?[0-9]{,9}$", name):
+        ret = False
+    if re.search("^[\_]{,3}[A-Z]{2,}[\_]{,3}$", name):
+        ret = False
+    if re.search("^[A-Z]{2}[a-z]{2,}$", name):
+        ret = False
+    if re.search("^([A-Z][a-z]{1,}){3}[0-9]?$", name):
+        ret = False
+    if re.search("^[A-Z]{1,}[a-z]{1,}[A-Z]{1,}$", name):
+        ret = False
+    if re.search("^[A-Z]{1,}[a-z]{1,}$", name):
+        ret = False
+    if re.search("^([A-Z]?[a-z]{1,}[\_]{1,}){1,}[A-Z]?[a-z]{1,}$", name):
+        ret = False
+    if re.search("^[A-Z]{1,}[a-z]{1,}[\_][A-Z][\_][A-Z]{1,}[a-z]{1,}$", name):
+        ret = False
+    if re.search("^[a-z]{1,}[A-Z][a-z]{1,}[A-Z][a-z]{1,}$", name):
+        ret = False
+    if re.search("^[A-Z][a-z]{1,}[A-Z][a-z]{1,}[A-Z]{1,}$", name):
+        ret = False
+    if re.search("^([A-Z][\_]){1,}[A-Z][a-z]{1,}$", name):
+        ret = False
+    if re.search("^[\_][A-Z][a-z]{1,}[\_][A-Z][a-z]{1,}[\_]?$", name):
+        ret = False
+    if re.search("^[A-Z][a-z]{1,}[\_][A-Z][\_][A-Z]$", name):
+        ret = False
+    if re.search("^[A-Z][a-z]{2,}[0-9][A-Z][a-z]{2,}$", name):
+        ret = False
+    if re.search("^[A-Z]{1,}[0-9]?$", name):
+        ret = False
+    if re.search("^[A-Z][a-z]{1,}[\_][A-Z]$", name):
+        ret = False
+    if re.search("^[A-Z][a-z]{1,}[A-Z]{2}[a-z]{1,}$", name):
+        ret = False
+    if re.search("^[\_]{1,}[a-z]{2,}[\_]{1,}$", name):
+        ret = False
+    if re.search("^[A-Z][a-z]{2,}[\_][A-Z][a-z]{2,}[\_][A-Z]$", name):
+        ret = False
+    if re.search("^[A-Z]?[a-z]{2,}[0-9]{2}[\_]?[A-Z]?[a-z]{2,}$", name):
+        ret = False
+    if re.search("^[A-Z][a-z]{2,}[A-Z]{1,}[0-9]{,2}$", name):
+        ret = False
+    if re.search("^[\_][A-Z][a-z]{2,}[A-Z][a-z]{2,}[\_]$", name):
+        ret = False
+    if re.search("^([A-Z][a-z]{1,}){2,}$", name):
+        ret = False
+    if re.search("^[A-Z][a-z]{2,}[\_][A-Z]{2}$", name):
+        ret = False
+    if re.search("^[a-z]{3,}[0-9][a-z]{3,}$", name):
+        ret = False
+    if re.search("^[a-z]{4,}[A-Z]{1,}$", name):
+        ret = False
+    if re.search("^[A-Z][a-z]{3,}[A-Z][0-9]{,9}$", name):
+        ret = False
+    if re.search("^[A-Z]{2,}[\_][A-Z][a-z]{3,}$", name):
+        ret = False
+    if re.search("^[A-Z][a-z]{3,}[A-Z]{1,3}[a-z]{3,}$", name):
+        ret = False
+    if re.search("^[A-Z]{3,}[a-z]{3,}[0-9]?$", name):
+        ret = False
+    if re.search("^[A-Z]?[a-z]{3,}[\_]+$", name):
+        ret = False
+    if re.search("^[A-Z][a-z]{3,}[\_][a-z]{3,}[\_][A-Za-z]{1,}$", name):
+        ret = False
+    if re.search("^[A-Z]{2,}[a-z]{3,}[A-Z][a-z]{3,}$", name):
+        ret = False
+    if re.search("^[A-Z][a-z]{2,}[A-Z][a-z]{3,}[\_]?[A-Z]{1,}$", name):
+        ret = False
+    if re.search("^[A-Z]{4,}[0-9]{2,9}$", name):
+        ret = False
+    if re.search("^[A-Z]{1,2}[a-z]{3,}[A-Z]{1,2}[a-z]{3,}[0-9]{1,9}$", name):
+        ret = False
+    if re.search("^[A-Z]+[a-z]{3,}[0-9]{1,9}$", name):
+        ret = False
+    if re.search("^([A-Z]?[a-z]{2,})+[0-9]{1,9}$", name):
+        ret = False
+    if re.search("^([A-Z]?[a-z]{2,})+\_?[a-z]+$", name):
+        ret = False
+    return ret
+
