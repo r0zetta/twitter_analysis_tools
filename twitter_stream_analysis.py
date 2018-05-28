@@ -522,7 +522,7 @@ def serialize():
     filename = os.path.join(save_dir, "raw/conf.json")
     save_json(conf, filename)
 
-    raw = ["interarrivals", "tag_map", "who_tweeted_what", "who_retweeted_what", "user_user_map", "user_hashtag_map", "user_cluster_map", "sources", "user_details"]
+    raw = ["interarrivals", "tag_map", "who_tweeted_what", "who_tweeted_what_url", "who_retweeted_what", "who_retweeted_what_url", "user_user_map", "user_hashtag_map", "user_cluster_map", "sources", "user_details"]
     for n in raw:
         if n in data:
             filename = os.path.join(save_dir, "raw/" + n + ".json")
@@ -765,7 +765,7 @@ def process_tweet(status):
     tweet_time_unix = twitter_time_to_unix(created_at)
     tweet_hour_label = tweet_time_object.strftime("%Y%m%d%H")
     tweet_day_label = tweet_time_object.strftime("%Y%m%d")
-    tweet_url = "https://twitter.com/" + screen_name + "/status/" + tweet_id
+    tweet_url = get_tweet_url(status)
 
     record_interarrival(screen_name, tweet_time_unix)
     interarrival_stdev = calculate_interarrival_statistics(screen_name)
@@ -783,7 +783,7 @@ def process_tweet(status):
 # Dump tweet to disk
     if "record_all_tweets" in conf["settings"]:
         if conf["settings"]["record_all_tweets"] == True:
-            tweet_file_handle.write(unicode(text) + u"\n")
+            tweet_file_handle.write(unicode(screen_name) + u":\t" + unicode(text) + u"\n")
             tweet_url_file_handle.write(unicode(tweet_url) + u"\t" + unicode(text) + u"\n")
 
 # Process text, record who tweeted what, which cluster the tweets belongs to, and build tag map
@@ -794,6 +794,7 @@ def process_tweet(status):
         data["tag_map"] = {}
     if preprocessed is not None:
         record_map("who_tweeted_what", preprocessed, screen_name, False)
+        record_map("who_tweeted_what_url", screen_name, tweet_url, False)
         tags = []
         if preprocessed not in data["tag_map"]:
             if lang in nlp and lang in stemmer:
@@ -822,7 +823,12 @@ def process_tweet(status):
 
     retweeted_user = get_retweeted_user(status)
     if retweeted_user is not None and preprocessed is not None:
-        record_map("who_retweeted_what", retweeted_user + " : " + preprocessed, screen_name, False)
+        retweeted_status = get_retweeted_status(status)
+        if retweeted_status is not None:
+            record_map("who_retweeted_what", retweeted_status, screen_name, False)
+        retweeted_url = get_retweeted_tweet_url(status)
+        if retweeted_url is not None:
+            record_map("who_retweeted_what_url", retweeted_url, screen_name, False)
 
 # Check text for keywords
     matched = False
