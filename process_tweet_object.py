@@ -26,10 +26,37 @@ def get_quoted(status):
                     if user["screen_name"] is not None:
                             return user["screen_name"]
 
+def get_retweeted_user_old(status):
+    text = get_text(status)
+    m = re.search("^RT\s+\@([^\:]+)\:\s+.+$", text)
+    if m is not None:
+        username = m.group(1)
+        return username
+
+def get_retweeted_status_old(status):
+    text = get_text(status)
+    m = re.search("^RT\s+\@[^\:]+\:\s+(.+)$", text)
+    if m is not None:
+        return m.group(1)
+
+def is_old_retweet(status):
+    if get_retweeted_user_old(status) is not None:
+        return True
+    return False
+
 def get_retweeted_user(status):
+    old_username = get_retweeted_user_old(status)
+    new_username = None
     if "retweeted_status" in status:
         orig_tweet = status["retweeted_status"]
-        return get_screen_name(orig_tweet)
+        new_username = get_screen_name(orig_tweet)
+        if old_username is None:
+            return new_username
+    if new_username is None:
+        return old_username
+    if old_username != new_username:
+        return old_username
+    return new_username
 
 def get_retweeted_tweet_id(status):
     if "retweeted_status" in status:
@@ -37,9 +64,18 @@ def get_retweeted_tweet_id(status):
         return get_tweet_id(orig_tweet)
 
 def get_retweeted_status(status):
+    old_rt_text = get_retweeted_status_old(status)
+    new_rt_text = None
     if "retweeted_status" in status:
         orig_tweet = status["retweeted_status"]
-        return get_text(orig_tweet)
+        new_rt_text = get_text(orig_tweet)
+        if old_rt_text is None:
+            return new_rt_text
+    if new_rt_text is None:
+        return old_rt_text
+    if old_rt_text != new_rt_text:
+        return old_rt_text
+    return new_rt_text
 
 def get_retweeted_tweet_url(status):
     if "retweeted_status" in status:
@@ -56,7 +92,6 @@ def get_tweet_url(status):
     if screen_name is not None and tweet_id is not None:
         url = "https://twitter.com/"+screen_name+"/status/"+tweet_id
         return url
-
 
 def get_replied(status):
     if "in_reply_to_screen_name" in status:

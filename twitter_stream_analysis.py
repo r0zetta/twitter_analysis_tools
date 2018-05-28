@@ -522,7 +522,7 @@ def serialize():
     filename = os.path.join(save_dir, "raw/conf.json")
     save_json(conf, filename)
 
-    raw = ["interarrivals", "tag_map", "who_tweeted_what", "who_tweeted_what_url", "who_retweeted_what", "who_retweeted_what_url", "user_user_map", "user_hashtag_map", "user_cluster_map", "sources", "user_details"]
+    raw = ["interarrivals", "tag_map", "who_tweeted_what", "who_tweeted_what_url", "retweeted_by_whom", "who_retweeted_what", "who_retweeted_what_url", "user_user_map", "user_hashtag_map", "user_cluster_map", "sources", "user_details"]
     for n in raw:
         if n in data:
             filename = os.path.join(save_dir, "raw/" + n + ".json")
@@ -823,6 +823,7 @@ def process_tweet(status):
 
     retweeted_user = get_retweeted_user(status)
     if retweeted_user is not None and preprocessed is not None:
+        record_map("retweeted_by_whom", retweeted_user, screen_name, False)
         retweeted_status = get_retweeted_status(status)
         if retweeted_status is not None:
             record_map("who_retweeted_what", retweeted_status, screen_name, False)
