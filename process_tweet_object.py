@@ -50,6 +50,13 @@ def get_retweeted_tweet_url(status):
             url = "https://twitter.com/"+screen_name+"/status/"+tweet_id
             return url
 
+def get_tweet_url(status):
+    screen_name = get_screen_name(status)
+    tweet_id = get_tweet_id(status)
+    if screen_name is not None and tweet_id is not None:
+        url = "https://twitter.com/"+screen_name+"/status/"+tweet_id
+        return url
+
 
 def get_replied(status):
     if "in_reply_to_screen_name" in status:
