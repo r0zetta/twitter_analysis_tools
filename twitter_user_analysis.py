@@ -165,6 +165,19 @@ def analyze_account_creation_dates(dataset, dirname, prefix):
         for val in deltas[:3000]:
             f.write(str(val) + "\n")
 
+def create_dist_graph(distdata, name):
+    dirname = save_dir
+    filename = name + ".svg"
+    title = name
+    x_labels = []
+    dataset = []
+    for val, count in sorted(distdata.items()):
+        x_labels.append(val)
+        dataset.append(count)
+    chart_data = {}
+    chart_data[title] = dataset
+    dump_bar_chart(dirname, filename, title, x_labels, chart_data)
+
 
 if __name__ == '__main__':
     save_dir = "captures/users/"
@@ -241,9 +254,23 @@ if __name__ == '__main__':
         max_s = 3200
         if data["statuses_count"] < 3200:
             max_s = data["statuses_count"]
+        retweet_dist = {}
+        like_dist = {}
+        total_likes = 0
+        most_liked = 0
+        most_liked_tweet = ""
+        total_retweets = 0
+        most_retweeted = 0
+        most_retweeted_tweet = ""
+        own_tweets = 0
         for status_obj in Cursor(auth_api.user_timeline, id=target).items():
             data["tweet_count"] += 1
             status = status_obj._json
+
+            text = get_text(status)
+            text = text.strip()
+            text = text.replace('\n', ' ').replace('\r', '')
+
             tweet_time = status_obj.created_at
             record_chronology("all_tweets", tweet_time)
             date_string = time_object_to_string(tweet_time)
@@ -266,7 +293,7 @@ if __name__ == '__main__':
                         data["interactions"][data["screen_name"]][n] += 1
             own_tweet = True
             if get_retweeted_status(status) is not None:
-                data["retweeted"][get_retweeted_status(status)] += 1
+                data["retweeted"][get_retweeted_user(status)] += 1
                 data["retweet_count"] += 1
                 own_tweet = False
             if get_quoted(status) is not None:
@@ -276,7 +303,29 @@ if __name__ == '__main__':
                 data["replied"][get_replied(status)] += 1
                 data["reply_count"] += 1
             if own_tweet == True:
+                own_tweets += 1
                 data["original_tweet_count"] += 1
+                num_likes = status["favorite_count"]
+                if num_likes > 0:
+                    total_likes += num_likes
+                    if num_likes > most_liked:
+                        most_liked = num_likes
+                        most_liked_tweet = text
+                    if num_likes not in like_dist:
+                        like_dist[num_likes] = 1
+                    else:
+                        like_dist[num_likes] += 1
+                num_retweets = status["retweet_count"]
+                if num_retweets > 0:
+                    total_retweets += num_retweets
+                    if num_retweets > most_retweeted:
+                        most_retweeted = num_retweets
+                        most_retweeted_tweet = text
+                    if num_retweets not in retweet_dist:
+                        retweet_dist[num_retweets] = 1
+                    else:
+                        retweet_dist[num_retweets] += 1
+
             ht = get_hashtags(status)
             if ht is not None and len(ht) > 0:
                 for h in ht:
@@ -292,9 +341,6 @@ if __name__ == '__main__':
             data["sources"][status["source"]] += 1
             data["languages"][status["lang"]] += 1
 
-            text = get_text(status)
-            text = text.strip()
-            text = text.replace('\n', ' ').replace('\r', '')
             tweet_texts.add(text)
             prep = preprocess_text(text)
             if prep is not None and len(prep) > 0:
@@ -310,6 +356,16 @@ if __name__ == '__main__':
             sys.stdout.write(str(data["tweet_count"]) + "/" + str(max_s))
             sys.stdout.flush()
 
+        mean_likes = np.mean(like_dist.values())
+        std_likes = np.std(like_dist.values())
+        adjusted_mean_likes = 1000 * float(mean_likes)/float(data["followers_count"])
+        save_json(like_dist, os.path.join(save_dir, "like_dist.json"))
+        create_dist_graph(like_dist, "like_dist")
+        mean_retweets = np.mean(retweet_dist.values())
+        std_retweets = np.std(retweet_dist.values())
+        adjusted_mean_retweets = 1000 * float(mean_retweets)/float(data["followers_count"])
+        save_json(retweet_dist, os.path.join(save_dir, "retweet_dist.json"))
+        create_dist_graph(retweet_dist, "retweet_dist")
         filename = os.path.join(save_dir, "interarrivals.txt")
         with open(filename, 'w') as handle:
             std = np.std(data["interarrivals"].values())
@@ -350,6 +406,18 @@ if __name__ == '__main__':
             handle.write(u"Retweets: " + unicode(data["retweet_count"]) + u"\n")
             handle.write(u"Tweets: " + unicode(data["tweet_count"]) + u"\n")
             handle.write(u"Replies: " + unicode(data["reply_count"]) + u"\n")
+            handle.write(u"Total likes: " + unicode(total_likes) + u"\n")
+            handle.write(u"Most liked: " + unicode(most_liked) + u"\n")
+            handle.write(most_liked_tweet + u"\n")
+            handle.write(u"Mean likes/tweet: " + unicode(mean_likes) + u"\n")
+            handle.write(u"Std likes/tweet: " + unicode(std_likes) + u"\n")
+            handle.write(u"Adjusted mean likes/tweet: " + unicode(adjusted_mean_likes) + u"\n")
+            handle.write(u"Total retweets: " + unicode(total_retweets) + u"\n")
+            handle.write(u"Most retweeted: " + unicode(most_retweeted) + u"\n")
+            handle.write(most_retweeted_tweet + u"\n")
+            handle.write(u"Mean retweets/tweet: " + unicode(mean_retweets) + u"\n")
+            handle.write(u"Std retweets/tweet: " + unicode(std_retweets) + u"\n")
+            handle.write(u"Adjusted mean retweets/tweet: " + unicode(adjusted_mean_retweets) + u"\n")
             data_string = output_data(10)
             handle.write(data_string)
 
