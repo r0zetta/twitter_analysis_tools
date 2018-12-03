@@ -235,7 +235,7 @@ def get_tweet_details(d):
                     "lang",
                     "created_at", 
                     "retweet_count", 
-                    "favourite_count", 
+                    "favorite_count", 
                     "quote_count", 
                     "reply_count", 
                     "source"]
