@@ -178,9 +178,15 @@ def create_dist_graph(distdata, name):
     chart_data[title] = dataset
     dump_bar_chart(dirname, filename, title, x_labels, chart_data)
 
+def auth():
+    acct_name, consumer_key, consumer_secret, access_token, access_token_secret = get_account_credentials()
+    auth = OAuthHandler(consumer_key, consumer_secret)
+    auth.set_access_token(access_token, access_token_secret)
+    auth_api = API(auth)
+    return auth_api
 
 if __name__ == '__main__':
-    save_dir = "captures/users/"
+    base_dir = "captures/users/"
     save_images = False
     targets = []
     if (len(sys.argv) > 1):
@@ -195,21 +201,17 @@ if __name__ == '__main__':
         sys.exit(0)
     print "Targets: " + ", ".join(targets)
 
-    acct_name, consumer_key, consumer_secret, access_token, access_token_secret = get_account_credentials()
-    auth = OAuthHandler(consumer_key, consumer_secret)
-    auth.set_access_token(access_token, access_token_secret)
-    auth_api = API(auth)
-
-    print "Signing in as: " + auth_api.me().name
 
     stopwords = load_json("config/stopwords.json")
 
     for target in targets:
+        auth_api = auth()
+        print "Signing in as: " + auth_api.me().name
         print("Getting account details for " + target)
         user = auth_api.get_user(target)
         if user is None:
             continue
-        save_dir = os.path.join(save_dir, target)
+        save_dir = os.path.join(base_dir, target)
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
         data = {}
@@ -235,6 +237,7 @@ if __name__ == '__main__':
         data["tweet_count"] = 0
         data["original_tweet_count"] = 0
         data["retweet_count"] = 0
+        data["quote_count"] = 0
         data["reply_count"] = 0
         tweet_timestamps = []
         data["hashtags"] = Counter()
@@ -246,6 +249,7 @@ if __name__ == '__main__':
         data["interactions"] = {}
         data["interacted"] = Counter()
         data["retweeted"] = Counter()
+        data["quoted"] = Counter()
         data["replied"] = Counter()
         data["languages"] = Counter()
         data["words"] = Counter()
@@ -297,8 +301,8 @@ if __name__ == '__main__':
                 data["retweet_count"] += 1
                 own_tweet = False
             if get_quoted(status) is not None:
-                data["retweeted"][get_quoted(status)] += 1
-                data["retweet_count"] += 1
+                data["quoted"][get_quoted(status)] += 1
+                data["quote_count"] += 1
             if get_replied(status) is not None:
                 data["replied"][get_replied(status)] += 1
                 data["reply_count"] += 1
@@ -356,6 +360,7 @@ if __name__ == '__main__':
             sys.stdout.write(str(data["tweet_count"]) + "/" + str(max_s))
             sys.stdout.flush()
 
+        save_json(data["retweeted"], os.path.join(save_dir, "retweeted.json"))
         mean_likes = np.mean(like_dist.values())
         std_likes = np.std(like_dist.values())
         adjusted_mean_likes = 1000 * float(mean_likes)/float(data["followers_count"])
