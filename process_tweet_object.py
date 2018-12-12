@@ -58,6 +58,11 @@ def get_retweeted_user(status):
         return old_username
     return new_username
 
+def get_retweeted_tweet_time(status):
+    if "retweeted_status" in status:
+        orig_tweet = status["retweeted_status"]
+        return get_tweet_created_at(orig_tweet)
+
 def get_retweeted_tweet_id(status):
     if "retweeted_status" in status:
         orig_tweet = status["retweeted_status"]
@@ -98,6 +103,26 @@ def get_replied(status):
         if status["in_reply_to_screen_name"] is not None:
             return status["in_reply_to_screen_name"]
 
+def get_interactions_preserve_case(status):
+    interactions = set()
+    screen_name = get_screen_name(status)
+    if screen_name is None:
+        return
+    mentioned = get_mentioned(status)
+    if mentioned is not None:
+        for m in mentioned:
+            interactions.add(m)
+    quoted = get_quoted(status)
+    if quoted is not None:
+        interactions.add(quoted)
+    retweeted = get_retweeted_user(status)
+    if retweeted is not None:
+        interactions.add(retweeted)
+    replied = get_replied(status)
+    if replied is not None:
+        interactions.add(replied)
+    return list(interactions)
+
 def get_interactions(status):
     interactions = set()
     screen_name = get_screen_name(status)
@@ -118,6 +143,20 @@ def get_interactions(status):
         interactions.add(replied)
     interactions = [x.lower() for x in interactions]
     return interactions
+
+def get_hashtags_preserve_case(status):
+    hashtags = []
+    if "entities" in status:
+        entities = status["entities"]
+        if "hashtags" in entities:
+            for item in entities["hashtags"]:
+                if item is not None:
+                    if "text" in item:
+                        tag = item['text']
+                        if tag is not None:
+                            if tag not in hashtags:
+                                hashtags.append(tag.lower())
+    return hashtags
 
 def get_hashtags(status):
     hashtags = []

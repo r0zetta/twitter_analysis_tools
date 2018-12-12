@@ -234,6 +234,9 @@ def get_tweet_details(d):
                     "text",
                     "lang",
                     "created_at", 
+                    "in_reply_to_screen_name",
+                    "in_reply_to_status_id",
+                    "is_quote_status",
                     "retweet_count", 
                     "favorite_count", 
                     "quote_count", 
@@ -255,6 +258,10 @@ def get_tweet_details(d):
                    "verified",
                    "protected"]
     entry = {}
+    entry["hashtags"] = get_hashtags_preserve_case(d)
+    entry["urls"] = get_urls(d)
+    entry["interactions"] = get_interactions_preserve_case(d)
+    entry["retweeted"] = get_retweeted_user(d)
     for f in tweet_fields:
         if f in d:
             entry[f] = d[f]
