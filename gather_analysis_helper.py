@@ -569,7 +569,7 @@ def get_data_for_snlist(raw_data, sn_list):
         if sn in sn_list:
             matched = True
         if "interactions" in d:
-            inter = [x.lower for x in d["interactions"]]
+            inter = [x.lower() for x in d["interactions"]]
             if len(set(inter).intersection(set(sn_list))) > 0:
                 matched = True
         if matched == True:
