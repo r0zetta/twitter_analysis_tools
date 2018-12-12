@@ -313,6 +313,18 @@ def get_retweeters_of_sn_list(raw_data, sn_list):
                 retweeters[sn] += 1
     return retweeters
 
+def get_retweeters_per_sn(raw_data, sn_list):
+    retweeters = {}
+    for sn in sn_list:
+        retweeters[sn] = Counter()
+    for d in raw_data:
+        if "retweeted_status" in d:
+            retweeted_sn = d["retweeted_status"]["user"]["screen_name"]
+            if retweeted_sn in sn_list:
+                sn = d["user"]["screen_name"]
+                retweeters[retweeted_sn][sn] += 1
+    return retweeters
+
 def plot_user_activity(raw_data, userlist):
     timestamps = Counter()
     for d in raw_data:
@@ -322,6 +334,29 @@ def plot_user_activity(raw_data, userlist):
             thour = tobj[:-3]
             timestamps[thour] += 1
     df = pd.Series(timestamps)
+    return df
+
+def plot_retweet_activity(raw_data, sn_list):
+    timestamps = {}
+    for sn in sn_list:
+        timestamps[sn] = {}
+    for d in raw_data:
+        if "retweeted_status" in d:
+            r = d["retweeted_status"]
+            sn = r["user"]["screen_name"]
+            if sn in sn_list:
+                tobj = twitter_time_to_readable(d["created_at"])
+                thour = tobj[:-3]
+                if thour not in timestamps[sn]:
+                    timestamps[sn][thour] = 1
+                else:
+                    timestamps[sn][thour] += 1
+    df = None
+    if len(sn_list) > 1:
+        df = pd.DataFrame(timestamps)
+    else:
+        df = pd.Series(timestamps)
+    df = df.interpolate()
     return df
 
 def plot_url_trends(raw_data, urls):
@@ -420,19 +455,19 @@ def get_counters_and_interactions(raw_data):
     for d in raw_data:
         count += 1
         twid = d["id_str"]
-        sn = d["user"]["screen_name"]
+        sn = d["user"]["screen_name"].lower()
         counters["users"][sn] += 1
         text = d["text"]
         tokens = tokenize_sentence(text, stopwords)
         for t in tokens:
             counters["words"][t] += 1
         if "retweeted_status" in d:
-            retweeted_sn = d["retweeted_status"]["user"]["screen_name"]
+            retweeted_sn = d["retweeted_status"]["user"]["screen_name"].lower()
             counters["highly_retweeted_users"][retweeted_sn] += 1
         if "in_reply_to_screen_name" in d and d["in_reply_to_screen_name"] is not None:
-            counters["highly_replied_to_users"][d["in_reply_to_screen_name"]] += 1
+            counters["highly_replied_to_users"][d["in_reply_to_screen_name"].lower()] += 1
         if "hashtags" in d:
-            ht = d["hashtags"]
+            ht = [x.lower() for x in d["hashtags"]]
             for h in ht:
                 counters["hashtags"][h] += 1
         if "urls" in d:
@@ -442,7 +477,7 @@ def get_counters_and_interactions(raw_data):
                     counters["urls"][u] += 1
         if "interactions" in d:
             counters["amplifiers"][sn] += 1
-            inter = d["interactions"]
+            inter = [x.lower() for x in d["interactions"]]
             if sn not in interactions:
                 interactions[sn] = {}
             for i in inter:
@@ -525,6 +560,32 @@ def get_highly_interacted(raw_data, cutoff):
     print("Highly replied to: " + str(len(highly_replied)))
     return highly_retweeted, highly_liked, highly_replied
 
+def get_data_for_snlist(raw_data, sn_list):
+    all_data = []
+    sn_list = [x.lower() for x in sn_list]
+    for d in raw_data:
+        sn = d["user"]["screen_name"].lower()
+        matched = False
+        if sn in sn_list:
+            matched = True
+        if "interactions" in d:
+            inter = [x.lower for x in d["interactions"]]
+            if len(set(inter).intersection(set(sn_list))) > 0:
+                matched = True
+        if matched == True:
+            all_data.append(d)
+    return all_data
+
+def get_data_for_hashtags(raw_data, ht_list):
+    all_data = []
+    ht_list = [x.lower() for x in ht_list]
+    for d in raw_data:
+        if "hashtags" in d:
+            ht = [x.lower() for x in d["hashtags"]]
+            if len(set(ht).intersection(set(ht_list))) > 0:
+                all_data.append(d)
+    return all_data
+
 def get_full_tweets_for_ids(raw_data, twid_list):
     id_to_tweet = {}
     for d in raw_data:
@@ -571,7 +632,7 @@ def get_full_tweets_from_snlist(raw_data, snlist):
     for d in raw_data:
         sn = d["user"]["screen_name"]
         if sn in snlist:
-            tweets[sn].append[d]
+            tweets[sn].append(d)
     return tweets
 
 def get_unique_tweet_ids_from_snlist(raw_data, snlist):
