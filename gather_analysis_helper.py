@@ -5,6 +5,9 @@ from time_helpers import *
 
 report_every = 100000
 
+#####################################
+# Basic helper functions
+#####################################
 def find_exact_string(w):
     return re.compile(r'\b({0})\b'.format(w), flags=re.IGNORECASE).search
 
@@ -82,6 +85,9 @@ def tokenize_sentence(text, stopwords):
         return []
     return cleaned
 
+#####################################
+# Data loading and caching
+#####################################
 def read_from_raw_data(start_time, end_time):
     ret = []
     print("Reading data from: " + start_time + " to: " + end_time)
@@ -143,73 +149,9 @@ def make_file_iterator(start_time, end_time, filename="data/raw.json"):
             if timestamp >= start and timestamp <= end:
                 yield(d)
 
-def match_users_for_urls(raw_data, urls):
-    users = {}
-    for u in urls:
-        users[u] = {}
-    for d in raw_data:
-        if "urls" in d and d["urls"] is not None and len(d["urls"]) > 0:
-            for u in urls:
-                if u in d["urls"]:
-                    sn = d["user"]["screen_name"]
-                    if sn not in users[u]:
-                        users[u][sn] = 1
-                    else:
-                        users[u][sn] += 1
-    return users
-
-def match_users_for_hashtags(raw_data, hashtags):
-    users = {}
-    for h in hashtags:
-        users[h] = {}
-    for d in raw_data:
-        if "hashtags" in d and d["hashtags"] is not None and len(d["hashtags"]) > 0:
-            for h in hashtags:
-                if h in d["hashtags"]:
-                    sn = d["user"]["screen_name"]
-                    if sn not in users[h]:
-                        users[h][sn] = 1
-                    else:
-                        users[h][sn] += 1
-    return users
-
-def get_full_tweets_by_user(raw_data, userlist):
-    tweets = {}
-    for u in userlist:
-        tweets[u] = []
-    for d in raw_data:
-        sn = d["user"]["screen_name"]
-        if sn in userlist:
-            tweets[sn].append(d)
-    return tweets
-
-def get_tweets_by_user(raw_data, userlist):
-    tweets = {}
-    for u in userlist:
-        tweets[u] = []
-    for d in raw_data:
-        sn = d["user"]["screen_name"]
-        if sn in userlist:
-            text = d["text"]
-            tweets[sn].append(text)
-    return tweets
-
-def get_unique_tweets_from_snlist(raw_data, snlist):
-    tweets = Counter()
-    for d in raw_data:
-        if d["user"]["screen_name"] in snlist:
-            tweets[d["text"]] += 1
-    return tweets
-
-def get_hashtags_for_users(raw_data, userlist):
-    hashtags = Counter()
-    for d in raw_data:
-        sn = d["user"]["screen_name"]
-        if sn in userlist:
-            for h in d["hashtags"]:
-                hashtags[h] += 1
-    return hashtags
-
+#####################################
+# Graph manipulation
+#####################################
 def match_graph(inter, match_list):
     ret = {}
     for source, targets in inter.items():
@@ -276,55 +218,9 @@ def trim_graph2(inter, all_users, cutoff):
                 trimmed[source][target] = count
     return trimmed
 
-def get_retweeted_from_sn_list(raw_data, sn_list):
-    retweeted = []
-    for d in raw_data:
-        sn = d["user"]["screen_name"]
-        if sn in sn_list:
-            if "retweeted_status" in d:
-                retweeted_sn = d["retweeted_status"]["user"]["screen_name"]
-                if retweeted_sn not in retweeted:
-                    retweeted.append(retweeted_sn)
-    return retweeted
-
-def get_retweets_from_sn_list(raw_data, sn_list):
-    retweet_ids = []
-    retweeted = []
-    for d in raw_data:
-        sn = d["user"]["screen_name"]
-        if sn in sn_list:
-            if "retweeted_status" in d:
-                rtwid = d["retweeted_status"]["id_str"]
-                s = d["retweeted_status"]
-                if "retweet_count" in s:
-                    if s["retweet_count"] is not None:
-                        if rtwid not in retweet_ids:
-                            retweet_ids.append(rtwid)
-                            retweeted.append(s)
-    return retweeted
-
-def get_retweeters_of_sn_list(raw_data, sn_list):
-    retweeters = Counter()
-    for d in raw_data:
-        if "retweeted_status" in d:
-            retweeted_sn = d["retweeted_status"]["user"]["screen_name"]
-            if retweeted_sn in sn_list:
-                sn = d["user"]["screen_name"]
-                retweeters[sn] += 1
-    return retweeters
-
-def get_retweeters_per_sn(raw_data, sn_list):
-    retweeters = {}
-    for sn in sn_list:
-        retweeters[sn] = Counter()
-    for d in raw_data:
-        if "retweeted_status" in d:
-            retweeted_sn = d["retweeted_status"]["user"]["screen_name"]
-            if retweeted_sn in sn_list:
-                sn = d["user"]["screen_name"]
-                retweeters[retweeted_sn][sn] += 1
-    return retweeters
-
+#####################################
+# Searches that return plottable data
+#####################################
 def plot_user_activity(raw_data, userlist):
     timestamps = Counter()
     for d in raw_data:
@@ -428,6 +324,9 @@ def plot_hashtag_trends(raw_data, hashtags):
     df = df.interpolate()
     return df
 
+#####################################
+# Generic analysis of data
+#####################################
 def get_counters_and_interactions(raw_data):
     interactions = {}
     counters = {}
@@ -494,21 +393,6 @@ def get_counters_and_interactions(raw_data):
     print("Found " + str(len(counters["influencers"])) + " influencers.")
     return user_fields, counters, interactions
 
-def match_descriptions(raw_data, match_words):
-    matches = {}
-    for m in match_words:
-        matches[m] = []
-    for d in raw_data:
-        if "user" in d and "description" in d["user"]:
-            desc = d["user"]["description"]
-            if desc is not None:
-                for m in match_words:
-                    if find_exact_string(m.lower())(desc.lower()):
-                        sn = d["user"]["screen_name"]
-                        if sn not in matches[m]:
-                            matches[m].append(sn)
-    return matches
-
 def get_highly_interacted(raw_data, cutoff):
     highly_retweeted = []
     highly_retweeted_ids = []
@@ -560,6 +444,33 @@ def get_highly_interacted(raw_data, cutoff):
     print("Highly replied to: " + str(len(highly_replied)))
     return highly_retweeted, highly_liked, highly_replied
 
+def get_tweet_id_interactions(raw_data, twid_list):
+    interactions = {}
+    for d in raw_data:
+        sn = d["user"]["screen_name"]
+        twid = d["id_str"]
+        if "retweeted_status" in d:
+            twid = d["retweeted_status"]["id_str"]
+        if twid in twid_list:
+            if sn not in interactions:
+                interactions[sn] = {}
+            interactions[sn][twid] = 1
+    return interactions
+
+
+#####################################
+# Searches that return full data
+#####################################
+def get_full_tweets_by_user(raw_data, userlist):
+    tweets = {}
+    for u in userlist:
+        tweets[u] = []
+    for d in raw_data:
+        sn = d["user"]["screen_name"]
+        if sn in userlist:
+            tweets[sn].append(d)
+    return tweets
+
 def get_data_for_snlist(raw_data, sn_list):
     all_data = []
     sn_list = [x.lower() for x in sn_list]
@@ -575,6 +486,16 @@ def get_data_for_snlist(raw_data, sn_list):
         if matched == True:
             all_data.append(d)
     return all_data
+
+def get_full_tweets_from_snlist(raw_data, snlist):
+    tweets = {}
+    for s in snlist:
+        tweets[s] = []
+    for d in raw_data:
+        sn = d["user"]["screen_name"]
+        if sn in snlist:
+            tweets[sn].append(d)
+    return tweets
 
 def get_data_for_hashtags(raw_data, ht_list):
     all_data = []
@@ -596,6 +517,143 @@ def get_full_tweets_for_ids(raw_data, twid_list):
             id_to_tweet[twid] = d
     return id_to_tweet
 
+def get_full_tweets_from_hashtags(raw_data, htlist):
+    tweets = {}
+    for h in htlist:
+        tweets[h] = []
+    for d in raw_data:
+        if "hashtags" in d and d["hashtags"] is not None and len(d["hashtags"]) > 0:
+            matched = list(set(d["hashtags"]).intersection(set(htlist)))
+            if len(matched) > 0:
+                for h in matched:
+                    tweets[h].append(d)
+    return tweets
+
+#####################################
+# Searches that return screen names
+#####################################
+def match_users_for_urls(raw_data, urls):
+    users = {}
+    for u in urls:
+        users[u] = {}
+    for d in raw_data:
+        if "urls" in d and d["urls"] is not None and len(d["urls"]) > 0:
+            for u in urls:
+                if u in d["urls"]:
+                    sn = d["user"]["screen_name"]
+                    if sn not in users[u]:
+                        users[u][sn] = 1
+                    else:
+                        users[u][sn] += 1
+    return users
+
+def match_users_for_hashtags(raw_data, hashtags):
+    users = {}
+    for h in hashtags:
+        users[h] = {}
+    for d in raw_data:
+        if "hashtags" in d and d["hashtags"] is not None and len(d["hashtags"]) > 0:
+            for h in hashtags:
+                if h in d["hashtags"]:
+                    sn = d["user"]["screen_name"]
+                    if sn not in users[h]:
+                        users[h][sn] = 1
+                    else:
+                        users[h][sn] += 1
+    return users
+
+def get_retweeted_from_sn_list(raw_data, sn_list):
+    retweeted = []
+    for d in raw_data:
+        sn = d["user"]["screen_name"]
+        if sn in sn_list:
+            if "retweeted_status" in d:
+                retweeted_sn = d["retweeted_status"]["user"]["screen_name"]
+                if retweeted_sn not in retweeted:
+                    retweeted.append(retweeted_sn)
+    return retweeted
+
+def get_retweeters_of_sn_list(raw_data, sn_list):
+    retweeters = Counter()
+    for d in raw_data:
+        if "retweeted_status" in d:
+            retweeted_sn = d["retweeted_status"]["user"]["screen_name"]
+            if retweeted_sn in sn_list:
+                sn = d["user"]["screen_name"]
+                retweeters[sn] += 1
+    return retweeters
+
+def get_retweeters_per_sn(raw_data, sn_list):
+    retweeters = {}
+    for sn in sn_list:
+        retweeters[sn] = Counter()
+    for d in raw_data:
+        if "retweeted_status" in d:
+            retweeted_sn = d["retweeted_status"]["user"]["screen_name"]
+            if retweeted_sn in sn_list:
+                sn = d["user"]["screen_name"]
+                retweeters[retweeted_sn][sn] += 1
+    return retweeters
+
+def match_descriptions(raw_data, match_words):
+    matches = {}
+    for m in match_words:
+        matches[m] = []
+    for d in raw_data:
+        if "user" in d and "description" in d["user"]:
+            desc = d["user"]["description"]
+            if desc is not None:
+                for m in match_words:
+                    if find_exact_string(m.lower())(desc.lower()):
+                        sn = d["user"]["screen_name"]
+                        if sn not in matches[m]:
+                            matches[m].append(sn)
+    return matches
+
+def get_retweeters_for_tweet_ids(raw_data, twid_list):
+    retweeters = {}
+    for d in raw_data:
+        sn = d["user"]["screen_name"]
+        twid = d["id_str"]
+        if "retweeted_status" in d:
+            twid = d["retweeted_status"]["id_str"]
+        if twid in twid_list:
+            if twid not in retweeters:
+                retweeters[twid] = Counter()
+            retweeters[twid][sn] += 1
+    return retweeters
+
+def get_sns_and_ids_from_data(raw_data):
+    sns = Counter()
+    sn_to_twid = {}
+    for d in raw_data:
+        sn = d["user"]["screen_name"]
+        twid = d["user"]["id_str"]
+        sns[sn] += 1
+        sn_to_twid[sn] = twid
+    return sns, sn_to_twid
+
+#####################################
+# Searches that return tweet text
+#####################################
+def get_tweets_by_user(raw_data, userlist):
+    tweets = {}
+    for u in userlist:
+        tweets[u] = []
+    for d in raw_data:
+        sn = d["user"]["screen_name"]
+        if sn in userlist:
+            text = d["text"]
+            tweets[sn].append(text)
+    return tweets
+
+def get_unique_tweets_from_snlist(raw_data, snlist):
+    tweets = Counter()
+    for d in raw_data:
+        if d["user"]["screen_name"] in snlist:
+            tweets[d["text"]] += 1
+    return tweets
+
 def get_tweets_for_ids(raw_data, twid_list):
     id_to_tweet = {}
     for d in raw_data:
@@ -612,28 +670,36 @@ def get_tweets_for_ids(raw_data, twid_list):
             id_to_tweet[twid] = [text, url]
     return id_to_tweet
 
-def get_tweet_id_interactions(raw_data, twid_list):
-    interactions = {}
+#####################################
+# Searches that return hashtags
+#####################################
+def get_hashtags_for_users(raw_data, userlist):
+    hashtags = Counter()
     for d in raw_data:
         sn = d["user"]["screen_name"]
-        twid = d["id_str"]
-        if "retweeted_status" in d:
-            twid = d["retweeted_status"]["id_str"]
-        if twid in twid_list:
-            if sn not in interactions:
-                interactions[sn] = {}
-            interactions[sn][twid] = 1
-    return interactions
+        if sn in userlist:
+            for h in d["hashtags"]:
+                hashtags[h] += 1
+    return hashtags
 
-def get_full_tweets_from_snlist(raw_data, snlist):
-    tweets = {}
-    for s in snlist:
-        tweets[s] = []
+#####################################
+# Searches that return tweet ids
+#####################################
+def get_retweets_from_sn_list(raw_data, sn_list):
+    retweet_ids = []
+    retweeted = []
     for d in raw_data:
         sn = d["user"]["screen_name"]
-        if sn in snlist:
-            tweets[sn].append(d)
-    return tweets
+        if sn in sn_list:
+            if "retweeted_status" in d:
+                rtwid = d["retweeted_status"]["id_str"]
+                s = d["retweeted_status"]
+                if "retweet_count" in s:
+                    if s["retweet_count"] is not None:
+                        if rtwid not in retweet_ids:
+                            retweet_ids.append(rtwid)
+                            retweeted.append(s)
+    return retweeted
 
 def get_unique_tweet_ids_from_snlist(raw_data, snlist):
     twids = Counter()
@@ -670,31 +736,5 @@ def get_tweet_ids_from_hashtags(raw_data, htlist):
                 for h in matched:
                     twids[h][twid] += 1
     return twids
-
-def get_full_tweets_from_hashtags(raw_data, htlist):
-    tweets = {}
-    for h in htlist:
-        tweets[h] = []
-    for d in raw_data:
-        if "hashtags" in d and d["hashtags"] is not None and len(d["hashtags"]) > 0:
-            matched = list(set(d["hashtags"]).intersection(set(htlist)))
-            if len(matched) > 0:
-                for h in matched:
-                    tweets[h].append(d)
-    return tweets
-
-def get_retweeters_for_tweet_ids(raw_data, twid_list):
-    retweeters = {}
-    for d in raw_data:
-        sn = d["user"]["screen_name"]
-        twid = d["id_str"]
-        if "retweeted_status" in d:
-            twid = d["retweeted_status"]["id_str"]
-        if twid in twid_list:
-            if twid not in retweeters:
-                retweeters[twid] = Counter()
-            retweeters[twid][sn] += 1
-    return retweeters
-
 
 
