@@ -249,6 +249,7 @@ def get_tweet_details(d):
                    "friends_count",
                    "followers_count",
                    "description",
+                   "location",
                    "statuses_count",
                    "favourites_count",
                    "listed_count"
