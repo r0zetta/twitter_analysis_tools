@@ -188,6 +188,7 @@ def auth():
 if __name__ == '__main__':
     base_dir = "captures/users/"
     save_images = False
+    follow_analysis = False
     targets = []
     if (len(sys.argv) > 1):
         for a in sys.argv[1:]:
@@ -432,65 +433,65 @@ if __name__ == '__main__':
             handle.write(data_string)
 
         dump_chronology(save_dir)
+        if follow_analysis == True:
+            print
+            print "Getting followers for " + target
+            data["followers_ids"] = auth_api.followers_ids(target)
+            data["followers_details"] = get_user_objects(data["followers_ids"])
+            print
+            print("Analyzing followers")
+            bot_followers = set()
+            analyze_account_creation_dates(data["followers_details"], save_dir, "followers")
+            for user in data["followers_details"]:
+                screen_name = user["screen_name"]
+                if is_new_account_bot(user):
+                    bot_followers.add(screen_name)
+            data["bot_follow_list"] = [x for x in sorted(bot_followers)]
+            filename = os.path.join(save_dir, "bot_followers.json")
+            save_json(data["bot_follow_list"], filename)
+            data["follower_ranges"] = make_ranges(data["followers_details"])
+            filename = os.path.join(save_dir, "follower_ranges.txt")
+            with open(filename, "w") as f:
+                f.write("Follower account age ranges\n")
+                f.write("===========================\n\n")
+                for key, val in sorted(data["follower_ranges"].items()):
+                    f.write(key + ":\t" + str(len(val)) + "\n")
 
-        print
-        print "Getting followers for " + target
-        data["followers_ids"] = auth_api.followers_ids(target)
-        data["followers_details"] = get_user_objects(data["followers_ids"])
-        print
-        print("Analyzing followers")
-        bot_followers = set()
-        analyze_account_creation_dates(data["followers_details"], save_dir, "followers")
-        for user in data["followers_details"]:
-            screen_name = user["screen_name"]
-            if is_new_account_bot(user):
-                bot_followers.add(screen_name)
-        data["bot_follow_list"] = [x for x in sorted(bot_followers)]
-        filename = os.path.join(save_dir, "bot_followers.json")
-        save_json(data["bot_follow_list"], filename)
-        data["follower_ranges"] = make_ranges(data["followers_details"])
-        filename = os.path.join(save_dir, "follower_ranges.txt")
-        with open(filename, "w") as f:
-            f.write("Follower account age ranges\n")
-            f.write("===========================\n\n")
-            for key, val in sorted(data["follower_ranges"].items()):
-                f.write(key + ":\t" + str(len(val)) + "\n")
+            print "Getting friends for " + target
+            data["friends_ids"] = auth_api.friends_ids(target)
+            data["friends_details"] = get_user_objects(data["friends_ids"])
+            print
+            print("Analyzing friends")
+            bot_friends = set()
+            analyze_account_creation_dates(data["friends_details"], save_dir, "friends")
+            for user in data["friends_details"]:
+                screen_name = user["screen_name"]
+                if is_new_account_bot(user):
+                    bot_friends.add(screen_name)
+            data["bot_friend_list"] = [x for x in sorted(bot_friends)]
+            filename = os.path.join(save_dir, "bot_friends.json")
+            save_json(data["bot_friend_list"], filename)
+            data["friends_ranges"] = make_ranges(data["friends_details"])
+            filename = os.path.join(save_dir, "friends_ranges.txt")
+            with open(filename, "w") as f:
+                f.write("Friends account age ranges\n")
+                f.write("==========================\n\n")
+                for key, val in sorted(data["friends_ranges"].items()):
+                    f.write(key + ":\t" + str(len(val)) + "\n")
 
-        print "Getting friends for " + target
-        data["friends_ids"] = auth_api.friends_ids(target)
-        data["friends_details"] = get_user_objects(data["friends_ids"])
-        print
-        print("Analyzing friends")
-        bot_friends = set()
-        analyze_account_creation_dates(data["friends_details"], save_dir, "friends")
-        for user in data["friends_details"]:
-            screen_name = user["screen_name"]
-            if is_new_account_bot(user):
-                bot_friends.add(screen_name)
-        data["bot_friend_list"] = [x for x in sorted(bot_friends)]
-        filename = os.path.join(save_dir, "bot_friends.json")
-        save_json(data["bot_friend_list"], filename)
-        data["friends_ranges"] = make_ranges(data["friends_details"])
-        filename = os.path.join(save_dir, "friends_ranges.txt")
-        with open(filename, "w") as f:
-            f.write("Friends account age ranges\n")
-            f.write("==========================\n\n")
-            for key, val in sorted(data["friends_ranges"].items()):
-                f.write(key + ":\t" + str(len(val)) + "\n")
+            account_interactions = {}
+            account_interactions[data["screen_name"]] = Counter()
+            for d in data["followers_details"]:
+                if "screen_name" in d:
+                    account_interactions[data["screen_name"]][d["screen_name"]] += 1
+            for d in data["friends_details"]:
+                if "screen_name" in d:
+                    account_interactions[data["screen_name"]][d["screen_name"]] += 1
+            filename = os.path.join(save_dir, "account_interactions.csv")
+            save_gephi_csv(account_interactions, filename)
 
-        account_interactions = {}
-        account_interactions[data["screen_name"]] = Counter()
-        for d in data["followers_details"]:
-            if "screen_name" in d:
-                account_interactions[data["screen_name"]][d["screen_name"]] += 1
-        for d in data["friends_details"]:
-            if "screen_name" in d:
-                account_interactions[data["screen_name"]][d["screen_name"]] += 1
-        filename = os.path.join(save_dir, "account_interactions.csv")
-        save_gephi_csv(account_interactions, filename)
-
-        filename = os.path.join(save_dir, "all_data.json")
-        save_json(data, filename)
+            filename = os.path.join(save_dir, "all_data.json")
+            save_json(data, filename)
 
         if save_images == True:
             print("Fetching images")
