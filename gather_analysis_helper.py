@@ -344,7 +344,7 @@ def get_communities(inter):
     g = Graph()
     g.add_vertices(vocab_len)
     edge_count = 0
-    max_s = len(interactions)
+    max_s = len(inter)
     edges = []
     print("Getting edges")
     for source, target_list in inter.items():
