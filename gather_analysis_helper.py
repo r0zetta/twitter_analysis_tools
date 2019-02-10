@@ -365,11 +365,9 @@ def get_communities(inter):
 
     clusters = {}
     for mod, nodelist in enumerate(communities):
-        if len(nodelist) > 2:
-            print("Mod: " + str(mod) + " Size: " + str(len(nodelist)))
-            clusters[mod] = []
-            for ident in nodelist:
-                clusters[mod].append(vocab_inv[ident])
+        clusters[mod] = []
+        for ident in nodelist:
+            clusters[mod].append(vocab_inv[ident])
     return clusters
 
 #####################################
