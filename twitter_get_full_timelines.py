@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from authentication_keys import *
-from time_helpers import *
+from process_tweet_object import *
 
 from collections import Counter
 from tweepy.streaming import StreamListener
@@ -23,11 +23,68 @@ def load_json(filename):
     ret = None
     if os.path.exists(filename):
         try:
-            with io.open(filename, "r", encoding="utf-8") as f:
+            with open(filename, "r") as f:
                 ret = json.load(f)
         except:
             pass
     return ret
+
+def get_tweet_details(d):
+    tweet_fields = ["id_str",
+                    "text",
+                    "lang",
+                    "created_at", 
+                    "in_reply_to_screen_name",
+                    "in_reply_to_status_id",
+                    "is_quote_status",
+                    "retweet_count", 
+                    "favorite_count", 
+                    "quote_count", 
+                    "reply_count", 
+                    "source"]
+    user_fields = ["id_str",
+                   "screen_name",
+                   "name",
+                   "lang"
+                   "friends_count",
+                   "followers_count",
+                   "description",
+                   "location",
+                   "statuses_count",
+                   "favourites_count",
+                   "listed_count"
+                   "created_at",
+                   "default_profile_image",
+                   "default_profile",
+                   "verified",
+                   "protected"]
+    entry = {}
+    entry["hashtags"] = get_hashtags_preserve_case(d)
+    entry["urls"] = get_urls(d)
+    entry["interactions"] = get_interactions_preserve_case(d)
+    entry["retweeted"] = get_retweeted_user(d)
+    for f in tweet_fields:
+        if f in d:
+            entry[f] = d[f]
+    if "retweeted_status" in d:
+        s = d["retweeted_status"]
+        entry["retweeted_status"] = {}
+        for f in tweet_fields:
+            if f in s:
+                entry["retweeted_status"][f] = s[f]
+        if "user" in s:
+            u = s["user"]
+            entry["retweeted_status"]["user"] = {}
+            for f in user_fields:
+                if f in u:
+                    entry["retweeted_status"]["user"][f] = u[f]
+    if "user" in d:
+        u = d["user"]
+        entry["user"] = {}
+        for f in user_fields:
+            if f in u:
+                entry["user"][f] = u[f]
+    return entry
 
 def auth():
     acct_name, consumer_key, consumer_secret, access_token, access_token_secret = get_account_sequential()
@@ -50,12 +107,12 @@ if __name__ == '__main__':
     sn_list = load_json(sn_list_file)
     print("Accounts to query: " + str(len(sn_list)))
     base_dir = os.path.dirname(sn_list_file)
-    save_file = os.path.join(base_dir, "heatmap_analysis.json")
+    save_file = os.path.join(base_dir, "full_timelines.json")
     print("Saving output to: " + save_file)
     print("")
 
     users = []
-    queried_file = os.path.join(base_dir, "heatmap_queried.json")
+    queried_file = os.path.join(base_dir, "full_timelines_queried.json")
     if os.path.exists(queried_file):
         print("Getting list of already queried sns")
         with open(queried_file, "r") as f:
@@ -76,48 +133,24 @@ if __name__ == '__main__':
             continue
         auth_api = auth()
         print("Signing in as: " + auth_api.me().name)
-        previous_tweet_time = None
         print("Getting tweets for account: " + target)
-        tweet_timestamps = []
-        timestamps = []
-        interarrivals = {}
-        std = 0.0
+        details = {}
+        details[target] = []
         count = 0
         try:
             for status_obj in Cursor(auth_api.user_timeline, id=target).items():
                 count += 1
                 status = status_obj._json
-                ts = status["created_at"]
-                timestamps.append(ts)
-                tweet_time = status_obj.created_at
-                tweet_timestamps.append(tweet_time)
-                if previous_tweet_time is not None:
-                    delta = previous_tweet_time - tweet_time
-                    delta_seconds = int(delta.total_seconds())
-                    if delta_seconds not in interarrivals:
-                        interarrivals[delta_seconds] = 1
-                    else:
-                        interarrivals[delta_seconds] += 1
-                previous_tweet_time = tweet_time
+                entry = get_tweet_details(status)
+                details[target].append(entry)
                 sys.stdout.write("\r")
                 sys.stdout.flush()
                 sys.stdout.write(str(count))
                 sys.stdout.flush()
+            f.write(json.dumps(details) + "\n")
+            qf.write(target + "\n")
         except:
-            print("Couldn't get data for " + target)
-            continue
-        print("Writing entry")
-        std = np.std(list(interarrivals.values()))
-        heatmap = create_heatmap(tweet_timestamps)
-        entry = {}
-        entry["screen_name"] = target
-        entry["tweets_queried"] = count
-        entry["timestamps"] = timestamps
-        entry["interarrivals"] = interarrivals
-        entry["interarrival_stdev"] = std
-        entry["heatmap"] = heatmap
-        f.write(json.dumps(entry) + "\n")
-        qf.write(target + "\n")
+            pass
     f.close()
     qf.close()
 

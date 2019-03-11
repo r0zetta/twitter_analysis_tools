@@ -29,6 +29,12 @@ def twitter_time_to_object(time_string):
 def twitter_time_to_unix(time_string):
     return time_object_to_unix(twitter_time_to_object(time_string))
 
+def twitter_time_to_hour_weekday(time_string):
+    tobj = twitter_time_to_object(time_string)
+    hour = int(tobj.strftime("%-H"))
+    wkdy = int(tobj.strftime("%w"))
+    return hour, wkdy
+
 def seconds_to_days(seconds):
     return float(float(seconds)/86400.00)
 

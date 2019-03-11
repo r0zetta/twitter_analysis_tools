@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import unicode_literals
 from six.moves import cPickle
 import os
 import json
@@ -34,7 +33,7 @@ def load_bin(filename):
 
 def save_json(variable, filename):
     with io.open(filename, "w", encoding="utf-8") as f:
-        f.write(unicode(json.dumps(variable, indent=4, ensure_ascii=False)))
+        f.write(json.dumps(variable, indent=4, ensure_ascii=False))
 
 def load_json(filename):
     ret = None
@@ -49,15 +48,15 @@ def load_json(filename):
 def save_counter_csv(counter_data, filename):
     with io.open(filename, "w", encoding="utf-8") as f:
         for name, value in counter_data.most_common(50):
-            f.write(unicode(value) + u"\t" + unicode(name) + u"\n")
+            f.write(value + "\t" + name + "\n")
 
 def save_gephi_csv(data_map, filename):
     with io.open(filename, "w", encoding="utf-8") as f:
-        f.write(u"Source,Target,Weight\n")
-        for source, targets in data_map.iteritems():
+        f.write("Source,Target,Weight\n")
+        for source, targets in data_map.items():
             if len(targets) > 0:
-                for target, weight in targets.iteritems():
-                    f.write(unicode(source) + u"," + unicode(target) + u"," + unicode(weight) + u"\n")
+                for target, weight in targets.items():
+                    f.write(source + "," + target + "," + str(weight) + "\n")
 
 def save_heatmap(heatmap, filename):
     with open(filename, 'w') as handle:
@@ -73,7 +72,7 @@ def save_heatmap(heatmap, filename):
 def save_list(dataset, filename):
     with io.open(filename, "w", encoding="utf-8") as f:
         for key, val in dataset:
-            f.write(unicode(val) + u"\t" + unicode(key) + u"\n")
+            f.write(val + "\t" + key + "\n")
 
 def try_load_or_process(filename, processor_fn, function_arg):
     load_fn = None

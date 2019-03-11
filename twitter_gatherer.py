@@ -4,8 +4,6 @@ from __future__ import unicode_literals
 from authentication_keys import get_account_credentials
 from time_helpers import *
 from process_tweet_object import *
-from graph_helper import *
-from process_text import *
 from file_helpers import *
 
 from collections import Counter
@@ -15,7 +13,7 @@ from tweepy import OAuthHandler
 from tweepy import API
 from tweepy import Cursor
 import numpy as np
-import Queue
+from queue import Queue
 import threading
 import sys
 import time
@@ -42,7 +40,7 @@ conf = {}
 ##################
 def debug_print(string):
     if debug == True:
-        print string
+        print(string)
 
 def cleanup():
     debug_print(sys._getframe().f_code.co_name)
@@ -50,7 +48,7 @@ def cleanup():
     script_end_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
     conf["last_stopped"] = script_end_time_str
     if len(threading.enumerate()) > 2:
-        print "Waiting for queue to empty..."
+        print( "Waiting for queue to empty...")
         stopping = True
         tweet_queue.join()
     time.sleep(2)
@@ -145,21 +143,21 @@ def dump_counters():
     val_output = ""
     date_output = ""
     if counter_dump is not None:
-        for n, c in sorted(counter_dump.iteritems()):
+        for n, c in sorted(counter_dump.items()):
             val = None
             if type(c) is float:
                 val = "%.2f"%c
-                val_output += unicode(val) + u"\t" + unicode(n) + u"\n"
+                val_output += val + "\t" + n + "\n"
             elif len(str(c)) > 9:
                 val = unix_time_to_readable(int(c))
-                date_output += unicode(val) + u"\t" + unicode(n) + u"\n"
+                date_output += val + "\t" + n + "\n"
             else:
                 val = c
-                val_output += unicode(val) + u"\t" + unicode(n) + u"\n"
+                val_output += str(val) + "\t" + str(n) + "\n"
     handle = io.open(os.path.join(save_dir, "_counters.txt"), "w", encoding='utf-8')
-    handle.write(unicode(val_output))
+    handle.write(val_output)
     handle.write(u"\n")
-    handle.write(unicode(date_output))
+    handle.write(date_output)
     handle.close
 
 
@@ -214,8 +212,8 @@ def dump_event():
 
         set_counter("average_tweets_per_second", tcps)
         set_counter("previous_dump_time", int(time.time()))
-        print
-        print output
+        print()
+        print(output)
 
 # Record tweet volumes
         volume_file_handle.write(current_time_str + "\t" + str("%.2f" % tcps) + "\n")
@@ -314,9 +312,9 @@ def process_tweet(status):
     increment_counter("tweets_processed")
 
     abbreviated = get_tweet_details(status)
-    dump_file_handle.write((unicode(json.dumps(abbreviated,ensure_ascii=False))) + u"\n")
-    tweet_file_handle.write(unicode(screen_name) + u":\t" + unicode(text) + u"\n")
-    tweet_url_file_handle.write(unicode(tweet_url) + u"\t" + unicode(text) + u"\n")
+    dump_file_handle.write((json.dumps(abbreviated,ensure_ascii=False)) + u"\n")
+    tweet_file_handle.write(screen_name + u":\t" + text + u"\n")
+    tweet_url_file_handle.write(tweet_url + u"\t" + text + u"\n")
 
     debug_print("Done processing")
     return
@@ -363,8 +361,8 @@ def tweet_processing_thread():
 def start_thread():
     debug_print(sys._getframe().f_code.co_name)
     global tweet_queue
-    print "Starting processing thread..."
-    tweet_queue = Queue.Queue()
+    print("Starting processing thread...")
+    tweet_queue = Queue()
     t = threading.Thread(target=tweet_processing_thread)
     t.daemon = True
     t.start()
@@ -373,18 +371,34 @@ def start_thread():
 def get_tweet_stream(query):
     debug_print(sys._getframe().f_code.co_name)
     if follow == True:
-        for tweet in t.filter(follow=query):
-            preprocess_tweet(tweet)
+        while True:
+            try:
+                for tweet in t.filter(follow=query):
+                    preprocess_tweet(tweet)
+            except:
+                time.sleep(5)
     elif search == True:
-        for tweet in t.search(query):
-            preprocess_tweet(tweet)
+        while True:
+            try:
+                for tweet in t.search(query):
+                    preprocess_tweet(tweet)
+            except:
+                time.sleep(5)
     else:
         if query == "":
-            for tweet in t.sample():
-                preprocess_tweet(tweet)
+            while True:
+                try:
+                    for tweet in t.sample():
+                        preprocess_tweet(tweet)
+                except:
+                    time.sleep(5)
         else:
-            for tweet in t.filter(track=query):
-                preprocess_tweet(tweet)
+            while True:
+                try:
+                    for tweet in t.filter(track=query):
+                        preprocess_tweet(tweet)
+                except:
+                    time.sleep(5)
 
 #########################################
 # Main routine, called when script starts
@@ -442,7 +456,7 @@ if __name__ == '__main__':
 # Initialize twitter object
     acct_name, consumer_key, consumer_secret, access_token, access_token_secret = get_account_credentials()
     t = Twarc(consumer_key, consumer_secret, access_token, access_token_secret)
-    print "Signing in as: " + acct_name
+    print("Signing in as: " + acct_name)
 
 # Determine mode and build query
     query = ""
@@ -472,8 +486,8 @@ if __name__ == '__main__':
         query = ",".join(id_list)
         conf["query"] = query
         conf["ids"] = id_list
-        print "Preparing stream"
-        print "IDs: " + query
+        print("Preparing stream")
+        print("IDs: " + query)
     elif search == True:
         conf["mode"] = "search"
         print("Performing Twitter search")
@@ -493,8 +507,8 @@ if __name__ == '__main__':
             sys.exit(0)
         query = searches[0]
         conf["query"] = query
-        print "Preparing search"
-        print "Query: " + query
+        print("Preparing search")
+        print("Query: " + query)
     else:
         conf["mode"] = "stream"
         print("Listening to Twitter search stream with targets:")
@@ -508,12 +522,12 @@ if __name__ == '__main__':
         if len(targets) > 0:
             query = ",".join(targets)
             conf["query"] = query
-            print "Preparing stream"
+            print("Preparing stream")
             if query == "":
-                print "Getting 1% sample."
+                print("Getting 1% sample.")
             else:
-                print "Search: " + query
-        print targets
+                print("Search: " + query)
+        print(targets)
 
 # Start a thread to process incoming tweets
     start_thread()
@@ -528,12 +542,12 @@ if __name__ == '__main__':
         try:
             get_tweet_stream(query)
         except KeyboardInterrupt:
-            print "Keyboard interrupt..."
+            print("Keyboard interrupt...")
             cleanup()
             sys.exit(0)
         except:
-            print
-            print "Something exploded..."
+            print("")
+            print("Something exploded...")
             cleanup()
             sys.exit(0)
         cleanup()
@@ -544,11 +558,11 @@ if __name__ == '__main__':
             try:
                 get_tweet_stream(query)
             except KeyboardInterrupt:
-                print "Keyboard interrupt..."
+                print("Keyboard interrupt...")
                 cleanup()
                 sys.exit(0)
             except:
-                print
-                print "Something exploded..."
+                print("")
+                print("Something exploded...")
                 cleanup()
                 sys.exit(0)

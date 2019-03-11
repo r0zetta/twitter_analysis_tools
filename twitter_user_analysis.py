@@ -50,9 +50,9 @@ def output_data(num=None):
     output_string = ""
     for o in outputs:
         if o in data:
-            output_string += u"\n" + o + u":\n\n"
+            output_string += "\n" + o + ":\n\n"
             for item, count in Counter(data[o]).most_common(num):
-                output_string += unicode(count) + u": " + unicode(item) + u"\n"
+                output_string += str(count) + ": " + str(item) + "\n"
     return output_string
 
 def dump_chronology(dirname):
@@ -124,7 +124,7 @@ def make_ranges(user_data, num_ranges=20):
     for user in user_data:
         if "created_at" in user:
             account_age = seconds_since_twitter_time(user["created_at"])
-            for label, timestamps in ranges.iteritems():
+            for label, timestamps in ranges.items():
                 if account_age > timestamps["start"] and account_age < timestamps["end"]:
                     entry = {}
                     id_str = user["id_str"]
@@ -200,14 +200,14 @@ if __name__ == '__main__':
     if len(targets) < 1:
         print("No targets specified.")
         sys.exit(0)
-    print "Targets: " + ", ".join(targets)
+    print("Targets: " + ", ".join(targets))
 
 
     stopwords = load_json("config/stopwords.json")
 
     for target in targets:
         auth_api = auth()
-        print "Signing in as: " + auth_api.me().name
+        print("Signing in as: " + auth_api.me().name)
         print("Getting account details for " + target)
         user = auth_api.get_user(target)
         if user is None:
@@ -362,29 +362,29 @@ if __name__ == '__main__':
             sys.stdout.flush()
 
         save_json(data["retweeted"], os.path.join(save_dir, "retweeted.json"))
-        mean_likes = np.mean(like_dist.values())
-        std_likes = np.std(like_dist.values())
+        mean_likes = np.mean([y for x, y in like_dist.items()])
+        std_likes = np.std([y for x, y in like_dist.items()])
         adjusted_mean_likes = 1000 * float(mean_likes)/float(data["followers_count"])
         save_json(like_dist, os.path.join(save_dir, "like_dist.json"))
         create_dist_graph(like_dist, "like_dist")
-        mean_retweets = np.mean(retweet_dist.values())
-        std_retweets = np.std(retweet_dist.values())
+        mean_retweets = np.mean([y for x, y in retweet_dist.items()])
+        std_retweets = np.std([y for x, y in retweet_dist.items()])
         adjusted_mean_retweets = 1000 * float(mean_retweets)/float(data["followers_count"])
         save_json(retweet_dist, os.path.join(save_dir, "retweet_dist.json"))
         create_dist_graph(retweet_dist, "retweet_dist")
         filename = os.path.join(save_dir, "interarrivals.txt")
         with open(filename, 'w') as handle:
-            std = np.std(data["interarrivals"].values())
+            std = np.std([y for x, y in data["interarrivals"].items()])
             handle.write("Standard deviation: " + str(std) + "\n")
             for key in sorted(data["interarrivals"].keys()):
                 outstring = str(key) + " | " + str(data["interarrivals"][key]) + "\n"
-                handle.write(outstring.encode('utf-8'))
+                handle.write(outstring)
 
         filename = os.path.join(save_dir, "tweets.txt")
         data["tweet_texts"] = []
         with io.open(filename, 'w', encoding="utf-8") as handle:
             for t in tweet_texts:
-                handle.write(t + u"\n")
+                handle.write(t + "\n")
                 data["tweet_texts"].append(t)
 
         filename = os.path.join(save_dir, "tweet_interactions.csv")
@@ -396,34 +396,34 @@ if __name__ == '__main__':
 
         filename = os.path.join(save_dir, "digest.txt")
         with io.open(filename, 'w', encoding='utf-8') as handle:
-            handle.write(u"User name: " + data["name"] + u"\n")
-            handle.write(u"Screen name: @" + data["screen_name"] + u"\n")
-            handle.write(u"User id: " + unicode(data["user_id"]) + u"\n")
-            handle.write(u"Tweets: " + unicode(data["statuses_count"]) + u"\n")
-            handle.write(u"Likes: " + unicode(data["favourites_count"]) + u"\n")
-            handle.write(u"Lists: " + unicode(data["listed_count"]) + u"\n")
-            handle.write(u"Following: " + unicode(data["friends_count"]) + u"\n")
-            handle.write(u"Followers: " + unicode(data["followers_count"]) + u"\n")
-            handle.write(u"Created: " + unicode(data["account_created_date_readable"]) + u"\n")
-            handle.write(u"Description: " + unicode(data["description"]) + u"\n")
-            handle.write(u"Tweets per hour: " + unicode(data["tweets_per_hour"]) + u"\n")
-            handle.write(u"Tweets per day: " + unicode(data["tweets_per_day"]) + u"\n")
-            handle.write(u"Original tweets: " + unicode(data["original_tweet_count"]) + u"\n")
-            handle.write(u"Retweets: " + unicode(data["retweet_count"]) + u"\n")
-            handle.write(u"Tweets: " + unicode(data["tweet_count"]) + u"\n")
-            handle.write(u"Replies: " + unicode(data["reply_count"]) + u"\n")
-            handle.write(u"Total likes: " + unicode(total_likes) + u"\n")
-            handle.write(u"Most liked: " + unicode(most_liked) + u"\n")
-            handle.write(most_liked_tweet + u"\n")
-            handle.write(u"Mean likes/tweet: " + unicode(mean_likes) + u"\n")
-            handle.write(u"Std likes/tweet: " + unicode(std_likes) + u"\n")
-            handle.write(u"Adjusted mean likes/tweet: " + unicode(adjusted_mean_likes) + u"\n")
-            handle.write(u"Total retweets: " + unicode(total_retweets) + u"\n")
-            handle.write(u"Most retweeted: " + unicode(most_retweeted) + u"\n")
-            handle.write(most_retweeted_tweet + u"\n")
-            handle.write(u"Mean retweets/tweet: " + unicode(mean_retweets) + u"\n")
-            handle.write(u"Std retweets/tweet: " + unicode(std_retweets) + u"\n")
-            handle.write(u"Adjusted mean retweets/tweet: " + unicode(adjusted_mean_retweets) + u"\n")
+            handle.write("User name: " + str(data["name"]) + "\n")
+            handle.write("Screen name: @" + str(data["screen_name"]) + "\n")
+            handle.write("User id: " + str(data["user_id"]) + "\n")
+            handle.write("Tweets: " + str(data["statuses_count"]) + "\n")
+            handle.write("Likes: " + str(data["favourites_count"]) + "\n")
+            handle.write("Lists: " + str(data["listed_count"]) + "\n")
+            handle.write("Following: " + str(data["friends_count"]) + "\n")
+            handle.write("Followers: " + str(data["followers_count"]) + "\n")
+            handle.write("Created: " + str(data["account_created_date_readable"]) + "\n")
+            handle.write("Description: " + str(data["description"]) + "\n")
+            handle.write("Tweets per hour: " + str(data["tweets_per_hour"]) + "\n")
+            handle.write("Tweets per day: " + str(data["tweets_per_day"]) + "\n")
+            handle.write("Original tweets: " + str(data["original_tweet_count"]) + "\n")
+            handle.write("Retweets: " + str(data["retweet_count"]) + "\n")
+            handle.write("Tweets: " + str(data["tweet_count"]) + "\n")
+            handle.write("Replies: " + str(data["reply_count"]) + "\n")
+            handle.write("Total likes: " + str(total_likes) + "\n")
+            handle.write("Most liked: " + str(most_liked) + "\n")
+            handle.write(most_liked_tweet + "\n")
+            handle.write("Mean likes/tweet: " + str(mean_likes) + "\n")
+            handle.write("Std likes/tweet: " + str(std_likes) + "\n")
+            handle.write("Adjusted mean likes/tweet: " + str(adjusted_mean_likes) + "\n")
+            handle.write("Total retweets: " + str(total_retweets) + "\n")
+            handle.write("Most retweeted: " + str(most_retweeted) + "\n")
+            handle.write(most_retweeted_tweet + "\n")
+            handle.write("Mean retweets/tweet: " + str(mean_retweets) + "\n")
+            handle.write("Std retweets/tweet: " + str(std_retweets) + "\n")
+            handle.write("Adjusted mean retweets/tweet: " + str(adjusted_mean_retweets) + "\n")
             data_string = output_data(10)
             handle.write(data_string)
 
@@ -434,11 +434,11 @@ if __name__ == '__main__':
 
         dump_chronology(save_dir)
         if follow_analysis == True:
-            print
-            print "Getting followers for " + target
+            print("")
+            print("Getting followers for " + target)
             data["followers_ids"] = auth_api.followers_ids(target)
             data["followers_details"] = get_user_objects(data["followers_ids"])
-            print
+            print("")
             print("Analyzing followers")
             bot_followers = set()
             analyze_account_creation_dates(data["followers_details"], save_dir, "followers")
@@ -457,7 +457,7 @@ if __name__ == '__main__':
                 for key, val in sorted(data["follower_ranges"].items()):
                     f.write(key + ":\t" + str(len(val)) + "\n")
 
-            print "Getting friends for " + target
+            print("Getting friends for " + target)
             data["friends_ids"] = auth_api.friends_ids(target)
             data["friends_details"] = get_user_objects(data["friends_ids"])
             print

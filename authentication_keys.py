@@ -62,10 +62,10 @@ def read_account_keys():
 def get_valid_accounts():
     accounts = read_account_keys()
     available_accounts = []
-    for name, data in accounts.iteritems():
+    for name, data in accounts.items():
         available_accounts.append(name)
     if len(available_accounts) < 1:
-        print "No accounts available to sign on with..."
+        print("No accounts available to sign on with...")
         sys.exit(0)
     return available_accounts, accounts
 
@@ -85,7 +85,7 @@ def get_account_credentials():
 
 def get_account_sequential():
     global account_sequence
-    print "Account sequence: " + str(account_sequence)
+    print("Account sequence: " + str(account_sequence))
     available_accounts, accounts = get_valid_accounts()
     acct_name = available_accounts[account_sequence]
     account_sequence += 1

@@ -1,5 +1,5 @@
 from time_helpers import *
-from alphabet_detector import AlphabetDetector
+#from alphabet_detector import AlphabetDetector
 import re
 
 def get_mentioned(status):

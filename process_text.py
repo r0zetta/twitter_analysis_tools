@@ -56,11 +56,16 @@ def tokenize_sentence(text, stopwords=None):
         return []
 # Remove stopwords and other undesirable tokens
     cleaned = []
+    endtoks = [":", ",", "\'", "…", "."]
     for token in tokens:
         if len(token) > 0:
             if stopwords is not None:
                 if token in stopwords:
                     token = None
+            if token is not None and len(token) > 0 and token[-1] in endtoks:
+                token = token[0:-1]
+            if token is not None and len(token) > 0 and token[0] in endtoks:
+                token = token[1:]
             if token is not None:
                 if re.search(".+…$", token):
                     token = None
