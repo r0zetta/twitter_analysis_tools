@@ -260,7 +260,9 @@ def get_tweet_details(d):
     entry["hashtags"] = get_hashtags_preserve_case(d)
     entry["urls"] = get_urls(d)
     entry["interactions"] = get_interactions_preserve_case(d)
+    entry["mentioned"] = get_mentioned(d)
     entry["retweeted"] = get_retweeted_user(d)
+    entry["quoted"] = get_quoted(d)
     for f in tweet_fields:
         if f in d:
             entry[f] = d[f]
