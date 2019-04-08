@@ -243,26 +243,20 @@ def get_tweet_details(d):
     user_fields = ["id_str",
                    "screen_name",
                    "name",
-                   "lang"
+                   "lang",
                    "friends_count",
                    "followers_count",
                    "description",
                    "location",
                    "statuses_count",
                    "favourites_count",
-                   "listed_count"
+                   "listed_count",
                    "created_at",
                    "default_profile_image",
                    "default_profile",
                    "verified",
                    "protected"]
     entry = {}
-    entry["hashtags"] = get_hashtags_preserve_case(d)
-    entry["urls"] = get_urls(d)
-    entry["interactions"] = get_interactions_preserve_case(d)
-    entry["mentioned"] = get_mentioned(d)
-    entry["retweeted"] = get_retweeted_user(d)
-    entry["quoted"] = get_quoted(d)
     for f in tweet_fields:
         if f in d:
             entry[f] = d[f]
@@ -275,15 +269,21 @@ def get_tweet_details(d):
         if "user" in s:
             u = s["user"]
             entry["retweeted_status"]["user"] = {}
-            for f in user_fields:
-                if f in u:
-                    entry["retweeted_status"]["user"][f] = u[f]
+            for fu in user_fields:
+                if fu in u:
+                    entry["retweeted_status"]["user"][fu] = u[fu]
     if "user" in d:
         u = d["user"]
         entry["user"] = {}
-        for f in user_fields:
-            if f in u:
-                entry["user"][f] = u[f]
+        for fu in user_fields:
+            if fu in u:
+                entry["user"][fu] = u[fu]
+    entry["hashtags"] = get_hashtags_preserve_case(d)
+    entry["urls"] = get_urls(d)
+    entry["interactions"] = get_interactions_preserve_case(d)
+    entry["mentioned"] = get_mentioned(d)
+    entry["retweeted"] = get_retweeted_user(d)
+    entry["quoted"] = get_quoted(d)
     return entry
 
 def process_tweet(status):
@@ -372,7 +372,7 @@ def start_thread():
 
 def get_tweet_stream(query):
     debug_print(sys._getframe().f_code.co_name)
-    if follow == True:
+    if follow == True or followid == True:
         while True:
             try:
                 for tweet in t.filter(follow=query):
@@ -408,6 +408,7 @@ def get_tweet_stream(query):
 if __name__ == '__main__':
     mode = "stream"
     follow = False
+    followid = False
     gardenhose = False
     save_dir = "data"
     input_params = []
@@ -419,6 +420,9 @@ if __name__ == '__main__':
             elif s == "follow":
                 follow = True
                 mode = "follow"
+            elif s == "followid":
+                followid = True
+                mode = "followid"
             elif s == "stream":
                 mode = "stream"
             elif s == "gardenhose":
@@ -463,7 +467,7 @@ if __name__ == '__main__':
 # Determine mode and build query
     query = ""
     if follow == True:
-        print("Listening to accounts")
+        print("Listening to accounts (sn)")
         conf["mode"] = "follow"
         to_follow = []
         if len(input_params) > 0:
@@ -485,6 +489,30 @@ if __name__ == '__main__':
         if len(id_list) < 1:
             print("No account IDs found.")
             sys.exit(0)
+        query = ",".join(id_list)
+        conf["query"] = query
+        conf["ids"] = id_list
+        print("Preparing stream")
+        print("IDs: " + query)
+    elif followid == True:
+        print("Listening to accounts (sn)")
+        conf["mode"] = "followid"
+        to_follow = []
+        if len(input_params) > 0:
+            to_follow = input_params
+            conf["input"] = "command_line"
+        else:
+            conf["input"] = "config_file"
+            to_follow = read_config("config/followid.txt")
+            for f in to_follow:
+                m = re.match("^[0-9]+$", f)
+                if m is None:
+                    print("All ids should be numeric")
+                    sys.exit(0)
+        if len(to_follow) < 1:
+            print("No account names provided.")
+            sys.exit(0)
+        id_list = to_follow
         query = ",".join(id_list)
         conf["query"] = query
         conf["ids"] = id_list

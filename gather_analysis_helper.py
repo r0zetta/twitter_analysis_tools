@@ -92,7 +92,7 @@ def print_counters(counters, user_fields, list_len):
     counter_names = [x for x, y in counters.items()]
     for n in counter_names:
         print("")
-        print(n)
+        print(n + " (" + str(len(counters[n])) + ")")
         print("---------")
         if n in user_fields:
             print_sn_counter(counters[n], list_len)
@@ -398,6 +398,10 @@ def get_cluster_for_sn(sn, clusters):
         if sn in names:
             return names
 
+def get_cluster_index_for_sn(sn, clusters):
+    for index, names in clusters.items():
+        if sn in names:
+            return index
 #####################################
 # Searches that return plottable data
 #####################################
@@ -535,206 +539,6 @@ def make_hashtag_interactions(raw_data, ht_list, whitelist):
                         interactions[sn][ht] += 1
     return interactions
 
-def get_counters_and_interactions_whitelist(raw_data, whitelist):
-    interactions = {}
-    counters = {}
-
-    stopwords = load_json("config/stopwords.json")
-    stopwords = stopwords["en"]
-    stopwords += ["rt", "-", "&amp;", "|"]
-
-    counter_names = ["users",
-                     "influencers",
-                     "amplifiers",
-                     "hashtags",
-                     "highly_retweeted_users",
-                     "highly_replied_to_users",
-                     "words",
-                     "urls"]
-    user_fields = ["users",
-                   "influencers",
-                   "amplifiers",
-                   "highly_retweeted_users",
-                   "highly_replied_to_users"]
-    for n in counter_names:
-        counters[n] = Counter()
-    count = 0
-    for d in raw_data:
-        count += 1
-        twid = d["id_str"]
-        sn = d["user"]["screen_name"]
-        if sn in whitelist:
-            continue
-        text = d["text"]
-        tokens = tokenize_sentence(text, stopwords)
-        for t in tokens:
-            counters["words"][t] += 1
-        if "retweeted_status" in d:
-            rsn = d["retweeted_status"]["user"]["screen_name"]
-            if rsn in whitelist:
-                continue
-            counters["highly_retweeted_users"][rsn] += 1
-            counters["amplifiers"][sn] += 1
-            counters["influencers"][rsn] += 1
-            if sn not in interactions:
-                interactions[sn] = {}
-            if rsn not in interactions[sn]:
-                interactions[sn][rsn] = 1
-            else:
-                interactions[sn][rsn] += 1
-        counters["users"][sn] += 1
-        if "in_reply_to_screen_name" in d and d["in_reply_to_screen_name"] is not None:
-            counters["highly_replied_to_users"][d["in_reply_to_screen_name"].lower()] += 1
-        if "hashtags" in d:
-            ht = [x.lower() for x in d["hashtags"]]
-            for h in ht:
-                counters["hashtags"][h] += 1
-        if "urls" in d:
-            urls = d["urls"]
-            for u in urls:
-                if "twitter" not in u:
-                    counters["urls"][u] += 1
-    print("Processed " + str(count) + " tweets.")
-    print("Found " + str(len(counters["users"])) + " users.")
-    print("Found " + str(len(counters["hashtags"])) + " hashtags.")
-    print("Found " + str(len(counters["urls"])) + " urls.")
-    print("Found " + str(len(counters["amplifiers"])) + " amplifiers.")
-    print("Found " + str(len(counters["influencers"])) + " influencers.")
-    return user_fields, counters, interactions
-
-def get_counters_and_interactions_retweet_only(raw_data):
-    interactions = {}
-    counters = {}
-
-    stopwords = load_json("config/stopwords.json")
-    stopwords = stopwords["en"]
-    stopwords += ["rt", "-", "&amp;", "|"]
-
-    counter_names = ["users",
-                     "influencers",
-                     "amplifiers",
-                     "hashtags",
-                     "highly_retweeted_users",
-                     "highly_replied_to_users",
-                     "words",
-                     "urls"]
-    user_fields = ["users",
-                   "influencers",
-                   "amplifiers",
-                   "highly_retweeted_users",
-                   "highly_replied_to_users"]
-    for n in counter_names:
-        counters[n] = Counter()
-    count = 0
-    for d in raw_data:
-        count += 1
-        twid = d["id_str"]
-        sn = d["user"]["screen_name"]
-        counters["users"][sn] += 1
-        text = d["text"]
-        tokens = tokenize_sentence(text, stopwords)
-        for t in tokens:
-            counters["words"][t] += 1
-        if "retweeted_status" in d:
-            rsn = d["retweeted_status"]["user"]["screen_name"]
-            counters["highly_retweeted_users"][rsn] += 1
-            counters["amplifiers"][sn] += 1
-            counters["influencers"][rsn] += 1
-            if sn not in interactions:
-                interactions[sn] = {}
-            if rsn not in interactions[sn]:
-                interactions[sn][rsn] = 1
-            else:
-                interactions[sn][rsn] += 1
-        if "in_reply_to_screen_name" in d and d["in_reply_to_screen_name"] is not None:
-            counters["highly_replied_to_users"][d["in_reply_to_screen_name"].lower()] += 1
-        if "hashtags" in d:
-            ht = [x.lower() for x in d["hashtags"]]
-            for h in ht:
-                counters["hashtags"][h] += 1
-        if "urls" in d:
-            urls = d["urls"]
-            for u in urls:
-                if "twitter" not in u:
-                    counters["urls"][u] += 1
-    print("Processed " + str(count) + " tweets.")
-    print("Found " + str(len(counters["users"])) + " users.")
-    print("Found " + str(len(counters["hashtags"])) + " hashtags.")
-    print("Found " + str(len(counters["urls"])) + " urls.")
-    print("Found " + str(len(counters["amplifiers"])) + " amplifiers.")
-    print("Found " + str(len(counters["influencers"])) + " influencers.")
-    return user_fields, counters, interactions
-
-def get_counters_and_interactions(raw_data):
-    interactions = {}
-    counters = {}
-
-    stopwords = load_json("config/stopwords.json")
-    stopwords = stopwords["en"]
-    stopwords += ["rt", "-", "&amp;"]
-
-    counter_names = ["users",
-                     "influencers",
-                     "amplifiers",
-                     "hashtags",
-                     "highly_retweeted_users",
-                     "highly_replied_to_users",
-                     "repliers",
-                     "words",
-                     "urls"]
-    user_fields = ["users",
-                   "influencers",
-                   "amplifiers",
-                   "repliers",
-                   "highly_retweeted_users",
-                   "highly_replied_to_users"]
-    for n in counter_names:
-        counters[n] = Counter()
-    count = 0
-    for d in raw_data:
-        count += 1
-        twid = d["id_str"]
-        sn = d["user"]["screen_name"].lower()
-        counters["users"][sn] += 1
-        text = d["text"]
-        tokens = tokenize_sentence(text, stopwords)
-        for t in tokens:
-            counters["words"][t] += 1
-        if "retweeted_status" in d:
-            retweeted_sn = d["retweeted_status"]["user"]["screen_name"].lower()
-            counters["highly_retweeted_users"][retweeted_sn] += 1
-        if "in_reply_to_screen_name" in d and d["in_reply_to_screen_name"] is not None:
-            counters["highly_replied_to_users"][d["in_reply_to_screen_name"].lower()] += 1
-            counters["repliers"][sn] += 1
-        if "hashtags" in d:
-            ht = [x.lower() for x in d["hashtags"]]
-            for h in ht:
-                counters["hashtags"][h] += 1
-        if "urls" in d:
-            urls = d["urls"]
-            for u in urls:
-                if "twitter" not in u:
-                    counters["urls"][u] += 1
-        if "interactions" in d:
-            counters["amplifiers"][sn] += 1
-            inter = [x.lower() for x in d["interactions"]]
-            if sn not in interactions:
-                interactions[sn] = {}
-            for i in inter:
-                counters["influencers"][i] += 1
-                if i not in interactions[sn]:
-                    interactions[sn][i] = 1
-                else:
-                    interactions[sn][i] += 1
-    print("Processed " + str(count) + " tweets.")
-    print("Found " + str(len(counters["users"])) + " users.")
-    print("Found " + str(len(counters["hashtags"])) + " hashtags.")
-    print("Found " + str(len(counters["urls"])) + " urls.")
-    print("Found " + str(len(counters["amplifiers"])) + " amplifiers.")
-    print("Found " + str(len(counters["influencers"])) + " influencers.")
-    print("Found " + str(len(counters["repliers"])) + " repliers.")
-    return user_fields, counters, interactions
-
 def get_highly_interacted(raw_data, cutoff):
     highly_retweeted = []
     highly_retweeted_ids = []
@@ -804,12 +608,24 @@ def get_counters_and_interactions2(raw_data):
     twid_text = {}
     twid_url = {}
     twid_sn = {}
+    twid_rsn = {}
     sn_twid = {}
+    rsn_twid = {}
     sn_hashtag = {}
     hashtag_sn = {}
+    hashtag_twid = {}
+    url_twid = {}
     sn_url = {}
     url_sn = {}
+    sn_details = {}
 
+    orig_twids = set()
+    retweeted_twids = set()
+    replied_twids = set()
+    quoted_twids = set()
+
+    sn_quo = {}
+    quo_sn = {}
     sn_rsn = {}
     rsn_sn = {}
     sn_rep = {}
@@ -828,6 +644,8 @@ def get_counters_and_interactions2(raw_data):
                      "hashtags",
                      "mentioned",
                      "mentioners",
+                     "quoted",
+                     "quoters",
                      "retweeted",
                      "retweeters",
                      "replied_to",
@@ -839,6 +657,8 @@ def get_counters_and_interactions2(raw_data):
                    "amplifiers",
                    "mentioned",
                    "mentioners",
+                   "quoted",
+                   "quoters",
                    "repliers",
                    "retweeted",
                    "retweeters",
@@ -850,34 +670,72 @@ def get_counters_and_interactions2(raw_data):
         count += 1
         twid = d["id_str"]
         sn = d["user"]["screen_name"]
+        sn_details[sn] = d["user"]
         counters["users"][sn] += 1
         text = d["text"]
         twid = d["id_str"]
         rtc = d["retweet_count"]
         url = "https://twitter.com/" + sn + "/status/" + twid
-        tokens = tokenize_sentence(text, stopwords)
-        for t in tokens:
-            counters["words"][t] += 1
-        if "retweeted_status" in d:
-            text = d["retweeted_status"]["text"]
-            twid = d["retweeted_status"]["id_str"]
-            rtc = d["retweeted_status"]["retweet_count"]
-            rsn = d["retweeted_status"]["user"]["screen_name"]
-            url = "https://twitter.com/" + rsn + "/status/" + twid
-            counters["retweeted"][rsn] += 1
-            counters["retweeters"][sn] += 1
-            counters["amplifiers"][sn] += 1
-            counters["influencers"][rsn] += 1
-            if sn not in sn_rsn:
-                sn_rsn[sn] = Counter()
-            sn_rsn[sn][rsn] += 1
-            if rsn not in rsn_sn:
-                rsn_sn[rsn] = Counter()
-            rsn_sn[rsn][sn] += 1
         twid_count[twid] += 1
         twid_rtc[twid] = rtc
         twid_text[twid] = text.replace("\n", "")
         twid_url[twid] = url
+        if twid not in twid_sn:
+            twid_sn[twid] = Counter()
+        twid_sn[twid][sn] += 1
+        if sn not in sn_twid:
+            sn_twid[sn] = Counter()
+        sn_twid[sn][twid] += 1
+        quote = False
+        retweet = False
+        reply = False
+
+        tokens = tokenize_sentence(text, stopwords)
+        for t in tokens:
+            counters["words"][t] += 1
+
+        if "retweeted_status" in d:
+            rsn = d["retweeted_status"]["user"]["screen_name"]
+            sn_details[rsn] = d["retweeted_status"]["user"]
+            counters["amplifiers"][sn] += 1
+            counters["influencers"][rsn] += 1
+            if "is_quote_status" in d and d["is_quote_status"] == True:
+                quote = True
+                quoted_twids.add(twid)
+                counters["quoted"][rsn] += 1
+                counters["quoters"][sn] += 1
+                if sn not in sn_quo:
+                    sn_quo[sn] = Counter()
+                sn_quo[sn][rsn] += 1
+                if rsn not in quo_sn:
+                    quo_sn[rsn] = Counter()
+                quo_sn[rsn][sn] += 1
+            else:
+                retweet = True
+                retweeted_twids.add(twid)
+                text = d["retweeted_status"]["text"]
+                twid = d["retweeted_status"]["id_str"]
+                rtc = d["retweeted_status"]["retweet_count"]
+                url = "https://twitter.com/" + rsn + "/status/" + twid
+                counters["retweeted"][rsn] += 1
+                counters["retweeters"][sn] += 1
+                if sn not in sn_rsn:
+                    sn_rsn[sn] = Counter()
+                sn_rsn[sn][rsn] += 1
+                if rsn not in rsn_sn:
+                    rsn_sn[rsn] = Counter()
+                rsn_sn[rsn][sn] += 1
+                twid_count[twid] += 1
+                twid_rtc[twid] = rtc
+                twid_text[twid] = text.replace("\n", "")
+                twid_url[twid] = url
+                if twid not in twid_sn:
+                    twid_sn[twid] = Counter()
+                twid_sn[twid][rsn] += 1
+                if rsn not in sn_twid:
+                    sn_twid[rsn] = Counter()
+                sn_twid[rsn][twid] += 1
+
         if "mentioned" in d and d["mentioned"] is not None:
             if len(d["mentioned"]) > 0:
                 if sn not in sn_men:
@@ -891,13 +749,10 @@ def get_counters_and_interactions2(raw_data):
                     men_sn[m][sn] += 1
                     counters["amplifiers"][sn] += 1
                     counters["influencers"][m] += 1
-        if twid not in twid_sn:
-            twid_sn[twid] = Counter()
-        twid_sn[twid][sn] += 1
-        if sn not in sn_twid:
-            sn_twid[sn] = Counter()
-        sn_twid[sn][twid] += 1
+
         if "in_reply_to_screen_name" in d and d["in_reply_to_screen_name"] is not None:
+            reply = True
+            replied_twids.add(twid)
             rep = d["in_reply_to_screen_name"]
             if sn not in sn_rep:
                 sn_rep[sn] = Counter()
@@ -909,36 +764,50 @@ def get_counters_and_interactions2(raw_data):
             counters["repliers"][sn] += 1
             counters["amplifiers"][sn] += 1
             counters["influencers"][rep] += 1
+
+        if quote == False and retweet == False and reply == False:
+            orig_twids.add(twid)
+
         if "hashtags" in d:
             ht = d["hashtags"]
             if len(ht) > 0:
                 if sn not in sn_hashtag:
                     sn_hashtag[sn] = Counter()
                 for h in ht:
+                    if h not in hashtag_twid:
+                        hashtag_twid[h] = Counter()
+                    hashtag_twid[h][twid] += 1
                     if h not in hashtag_sn:
                         hashtag_sn[h] = Counter()
                     hashtag_sn[h][sn] += 1
                     sn_hashtag[sn][h] += 1
                     counters["hashtags"][h] += 1
+
         if "urls" in d:
             urls = d["urls"]
             if len(urls) > 0:
                 if sn not in sn_url:
                     sn_url[sn] = Counter()
                 for u in urls:
+                    if u not in url_twid:
+                        url_twid[u] = Counter()
+                    url_twid[u][twid] += 1
                     if u not in url_sn:
                         url_sn[u] = Counter()
                     url_sn[u][sn] += 1
                     sn_url[sn][u] += 1
                     if "twitter" not in u:
                         counters["urls"][u] += 1
+
     interactions = {}
     interactions ["sn_rsn"] = sn_rsn
     interactions ["sn_rep"] = sn_rep
     interactions ["sn_men"] = sn_men
+    interactions ["sn_quo"] = sn_quo
     interactions ["rep_sn"] = rep_sn
     interactions ["rsn_sn"] = rsn_sn
     interactions ["men_sn"] = men_sn
+    interactions ["quo_sn"] = quo_sn
     twid_assoc = {}
     twid_assoc["twid_count"] = twid_count
     twid_assoc["twid_rtc"] = twid_rtc
@@ -946,11 +815,18 @@ def get_counters_and_interactions2(raw_data):
     twid_assoc["twid_url"] = twid_url
     twid_assoc["twid_sn"] = twid_sn
     twid_assoc["sn_twid"] = sn_twid
+    twid_assoc["orig_twids"] = orig_twids
+    twid_assoc["retweeted_twids"] = retweeted_twids
+    twid_assoc["replied_twids"] = replied_twids
+    twid_assoc["quoted_twids"] = quoted_twids
     metadata = {}
     metadata["hashtag_sn"] = hashtag_sn
     metadata["sn_hashtag"] = sn_hashtag
     metadata["url_sn"] = url_sn
     metadata["sn_url"] = sn_url
+    metadata["hashtag_twid"] = hashtag_twid
+    metadata["url_twid"] = url_twid
+    metadata["sn_details"] = sn_details
 
     print("Processed " + str(count) + " tweets.")
     print("Found " + str(len(counters["users"])) + " users.")
@@ -960,10 +836,17 @@ def get_counters_and_interactions2(raw_data):
     print("Found " + str(len(counters["influencers"])) + " influencers.")
     print("Found " + str(len(counters["repliers"])) + " repliers.")
     print("Found " + str(len(counters["replied_to"])) + " replied_to.")
+    print("Found " + str(len(counters["quoted"])) + " quoted.")
+    print("Found " + str(len(counters["quoters"])) + " quoters.")
     print("Found " + str(len(counters["retweeted"])) + " retweeted.")
     print("Found " + str(len(counters["retweeters"])) + " retweeters.")
     print("Found " + str(len(counters["mentioned"])) + " mentioned.")
     print("Found " + str(len(counters["mentioners"])) + " mentioners.")
+    print("Found " + str(len(orig_twids)) + " original tweets.")
+    print("Found " + str(len(retweeted_twids)) + " retweets.")
+    print("Found " + str(len(quoted_twids)) + " quote tweets.")
+    print("Found " + str(len(replied_twids)) + " replies.")
+    print("Found " + str(len(sn_details)) + " user details.")
     full = {}
     full["user_fields"] = user_fields
     full["counters"] = counters
