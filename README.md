@@ -1,4 +1,4 @@
-# twitter_analysis_tools
+# twitter_analysis_tools ARE NOW DEPRECATED. GO TO: twitter_gather for working stuff.
 Twitter analysis tools used by r0zetta
 
 This is the latest Twitter analysis tools repo.
