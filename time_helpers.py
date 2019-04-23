@@ -101,3 +101,13 @@ def create_heatmap(timestamps):
         heatmap[weekday][hour] = heatmap[weekday][hour] + 1
     return heatmap
 
+def create_long_heatmap(timestamps):
+    heatmap = {}
+    for t in timestamps:
+        weeknum = t.isocalendar()[1]
+        weekday = t.weekday()
+        hour = t.hour
+        if weeknum not in heatmap:
+            heatmap[weeknum] = [[0 for j in range(24)] for i in range(7)]
+        heatmap[weeknum][weekday][hour] += 1
+    return heatmap

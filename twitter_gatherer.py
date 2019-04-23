@@ -280,6 +280,8 @@ def get_tweet_details(d):
                 entry["user"][fu] = u[fu]
     entry["hashtags"] = get_hashtags_preserve_case(d)
     entry["urls"] = get_urls(d)
+    entry["image_urls"] = get_image_urls(d)
+    entry["coordinates"] = get_coordinates(d)
     entry["interactions"] = get_interactions_preserve_case(d)
     entry["mentioned"] = get_mentioned(d)
     entry["retweeted"] = get_retweeted_user(d)

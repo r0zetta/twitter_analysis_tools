@@ -158,6 +158,12 @@ def get_hashtags_preserve_case(status):
                                 hashtags.append(tag.lower())
     return hashtags
 
+def get_coordinates(status):
+    if "coordinates" in status:
+        c = status["coordinates"]
+        if c is not None and "coordinates" in c:
+            return c["coordinates"]
+
 def get_hashtags(status):
     hashtags = []
     if "entities" in status:
